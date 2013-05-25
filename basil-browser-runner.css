@@ -77,22 +77,22 @@ body {
     font-weight: bold;
 }
 
-.basil-parent:after {
-    content: '';
-    font-family: FontAwesome;
-    font-weight: normal;
-    color: silver;
-    position: absolute;
-    left: -1em;
-    top: 0;
-}
-
-.basil-parent.is-collapsed:after {
-    content: '';
-}
-
 .basil-parent.is-collapsed > ul {
     display: none;
+}
+
+.basil-expandcollapse {
+    opacity: 0.2;
+    cursor: pointer;
+}
+
+.basil-test-icon,
+.basil-test-icon[class^="icon-"],
+.basil-test-icon[class*=" icon-"]
+{
+    display: inline-block;
+    width: 1em;
+    text-align: center;
 }
 
 /* Leaves */
@@ -103,9 +103,6 @@ body {
 }
 
 /* Links */
-.basil-parent {
-    cursor: pointer;
-}
 .basil-test-apply-filter {
     cursor: pointer;
     opacity: 0.2;
@@ -114,25 +111,6 @@ body {
 .basil-test-apply-filter:hover {
     opacity: 1;
     color: hsl(200, 80%, 40%);
-}
-
-/* Test state */
-.is-passed:before {
-    content: ' ';
-    color: hsl(76, 80%, 40%);
-    font-family: FontAwesome;
-    font-weight: normal;
-}
-
-li.is-failed:before {
-    content: ' ';
-    color: hsl(0, 80%, 50%);
-    font-family: FontAwesome;
-    font-weight: normal;
-}
-
-.is-not-run:before {
-    content: '∅ ';
 }
 
 .basil-inspect {
@@ -201,4 +179,12 @@ li.is-failed:before {
 #basil-filter {
     width: 40em;
     padding-left: 0.3em;
+}
+
+/* Passed/failed icon */
+.icon-ok {
+    color: hsl(76, 80%, 40%);
+}
+.icon-remove {
+    color: hsl(0, 80%, 50%);
 }
