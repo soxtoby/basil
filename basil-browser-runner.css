@@ -62,6 +62,8 @@ body {
 }
 
 #basil-results li {
+    position: relative;
+    list-style: none;
     padding-left: 0;
     margin-left: 0;
 }
@@ -73,11 +75,20 @@ body {
 /* Parents */
 .basil-parent {
     font-weight: bold;
-    list-style-image: url(data:image/gif;base64,R0lGODlhCQAJAIABAAAAAAAAACH5BAEAAAEALAAAAAAJAAkAAAINjI95wN3hnolJVoVzKAA7);
 }
 
-.basil-parent.is-collapsed {
-    list-style-image: url(data:image/gif;base64,R0lGODlhCQAJAPcBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEAAAEALAAAAAAJAAkAAAggAAME+CewYMF/BA0KRJjQIMOGCx86ZKiQYkWIBxUGCAgAOw==);
+.basil-parent:after {
+    content: '';
+    font-family: FontAwesome;
+    font-weight: normal;
+    color: silver;
+    position: absolute;
+    left: -1em;
+    top: 0;
+}
+
+.basil-parent.is-collapsed:after {
+    content: '';
 }
 
 .basil-parent.is-collapsed > ul {
@@ -98,6 +109,7 @@ body {
 .basil-test-apply-filter {
     cursor: pointer;
     opacity: 0.2;
+    padding: 2px;
 }
 .basil-test-apply-filter:hover {
     opacity: 1;
@@ -106,13 +118,17 @@ body {
 
 /* Test state */
 .is-passed:before {
-    content: '✓ ';
+    content: ' ';
     color: hsl(76, 80%, 40%);
+    font-family: FontAwesome;
+    font-weight: normal;
 }
 
 li.is-failed:before {
-    content: '✗ ';
+    content: ' ';
     color: hsl(0, 80%, 50%);
+    font-family: FontAwesome;
+    font-weight: normal;
 }
 
 .is-not-run:before {
@@ -120,8 +136,13 @@ li.is-failed:before {
 }
 
 .basil-inspect {
-    text-decoration: none;
-    font-size: small;
+    opacity: 0.2;
+    padding: 2px;
+}
+
+.basil-inspect:hover {
+    opacity: 1;
+    color: hsl(200, 80%, 40%);
 }
 
 .is-running {
@@ -133,19 +154,20 @@ li.is-failed:before {
     cursor: pointer;
     -webkit-appearance: none;
     appearance: none;
-    width: 1em;
-    height: 1em;
 }
 
 .toggle-fail-code:before {
-    font-weight: bold;
-    content: '›';
+    content: '';
+    font-family: FontAwesome;
     width: 1em;
     height: 0.7em;
+    opacity: 0.2;
 }
 
+.toggle-fail-code:hover:before,
 .toggle-fail-code:checked:before {
-    content: '⌵';
+    opacity: 1;
+    color: hsl(200, 80%, 40%);
 }
 
 .fail-code {

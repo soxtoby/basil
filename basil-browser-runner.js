@@ -234,9 +234,8 @@
     }
 
     function addFilterLink(li, test) {
-        var filterElement = document.createElement('span');
-        filterElement.setAttribute('class', 'basil-test-apply-filter');
-        filterElement.innerHTML = '&nbsp;➾';
+        var filterElement = document.createElement('i');
+        filterElement.setAttribute('class', 'basil-test-apply-filter icon-filter');
         filterElement.addEventListener('click', function(event) {
             event.stopPropagation();
 
@@ -273,14 +272,12 @@
     }
 
     function addInspectionLink (li, test) {
-        var a = document.createElement('a');
-        a.innerHTML = " inspect";
-        a.setAttribute('class', 'basil-inspect');
-        a.setAttribute('href', '#');
+        var inspectElement = document.createElement('i');
+        inspectElement.setAttribute('class', 'basil-inspect icon-signin');
 
-        addInspectListener(a, test.inspect.bind(test.inspectThisValue));
+        addInspectListener(inspectElement, test.inspect.bind(test.inspectThisValue));
 
-        li.appendChild(a);
+        li.appendChild(inspectElement);
     }
 
     function addInspectListener (a, inspect) {
