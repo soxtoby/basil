@@ -1,4 +1,30 @@
 ﻿(function(global) {
+    function extend(constructor, subPrototype) {
+        var prototype = Object.create(constructor.prototype);
+        Object.keys(subPrototype).forEach(function(key) {
+            prototype[key] = subPrototype[key];
+        });
+
+        return prototype;
+    }
+
+    function BrowserRunner() {
+        Basil.TestRunner.call(this);
+
+        this._renderTestPlugins = [];
+    }
+
+    BrowserRunner.prototype = extend(Basil.TestRunner, {
+        start: function() {
+            setup();
+            Basil.TestRunner.prototype.start.call(this);
+        },
+
+        registerRenderTestPlugin: function(plugin) {
+            this._renderTestPlugins.push(plugin);
+        }
+    });
+
     var localStorage = global.localStorage || {};
 
     var rootTests = [];
@@ -30,7 +56,7 @@
         + '</div>'
         + '<div id="basil-results"></div>';
 
-    var testRunner = global.basil = new Basil.TestRunner();
+    var testRunner = global.basil = new BrowserRunner();
 
     var filterParts = (param('filter') || '')
         .toLowerCase()
@@ -43,15 +69,6 @@
     testRunner.registerSetupPlugin(onRootComplete);
     testRunner.registerTestPlugin(filterTests);
 
-    waitForBody();
-
-    function waitForBody () {
-        if (!document.body)
-            return setTimeout(waitForBody, 10);
-
-        setup();
-        testRunner.start();
-    }
 
     function setupDomFixture(runTest) {
         var domElement = null;
@@ -107,7 +124,7 @@
     }
 
     function filterTests (runTest, test) {
-        var testKey = getTestKey(test.name());
+        var testKey = test.key();
 
         var isPartialMatch = testKey.indexOf(filterParts[testDepth] || '') > -1;
         var isExactMatch = testKey === filterParts[testDepth];
@@ -186,7 +203,7 @@
         }
     }
 
-    function appendResults (el, tests, parentTestKey) {
+    function appendResults (el, tests) {
         tests = tests.filter(function(t) { return !t.wasSkipped(); });
 
         if (!tests.length)
@@ -194,24 +211,23 @@
 
         var ul = document.createElement('ul');
         tests.forEach(function(test, i) {
-            var li = createLi(test, parentTestKey);
-            appendResults(li, test.children(), li.testKey);
+            var li = createLi(test);
+            appendResults(li, test.children());
             ul.appendChild(li);
         });
 
         el.appendChild(ul);
     }
 
-    function createLi (test, parentTestKey) {
-        var testKey = getFullTestKey(test.name(), parentTestKey);
-
+    function createLi (test) {
         var li = document.createElement('li');
         li.test = test;
-        li.testKey = testKey;
         li.innerText = getCaption(test);
         li.setAttribute('class', getCssClass(li));
 
-        addFilterLink(li, test);
+        testRunner._renderTestPlugins.forEach(function(plugin) {
+            plugin(li, test);
+        });
 
         if (test.children().length)
             addExpandCollapse(li, test);
@@ -224,35 +240,12 @@
         return li;
     }
 
-    function getFullTestKey(name, parentTestKey) {
-        var testKey = (parentTestKey + '>' + getTestKey(name));
-        return testKey.replace(/^>/,'');
-    }
-
-    function getTestKey(name) {
-        return name.toLowerCase().replace(/>/g, '');
-    }
-
-    function addFilterLink(li, test) {
-        var filterElement = document.createElement('i');
-        filterElement.setAttribute('class', 'basil-test-apply-filter icon-filter');
-        filterElement.addEventListener('click', function(event) {
-            event.stopPropagation();
-
-            testRunner.abort();
-            document.getElementById('basil-filter').value = li.testKey;
-            document.getElementById('basil-settings').submit();
-        });
-
-        li.appendChild(filterElement);
-    }
-
     function addExpandCollapse (li, test) {
         li.addEventListener('click', function(event) {
             if (event.target != li)
                 return;
 
-            toggleCollapsed(li.testKey);
+            toggleCollapsed(test.fullKey());
             li.setAttribute('class', getCssClass(li));
         });
     }
@@ -268,7 +261,6 @@
             delete localStorage[key];
         else
             localStorage[key] = true;
-
     }
 
     function addInspectionLink (li, test) {
@@ -309,7 +301,7 @@
 
         cssClass += test.children().length ? ' basil-parent' : ' basil-leaf';
 
-        if (isCollapsed(li.testKey))
+        if (isCollapsed(test.fullKey()))
             cssClass += ' is-collapsed';
         return cssClass;
     }
@@ -410,5 +402,26 @@
         return elements;
     }
 })(this);
+
+(function waitForBody () {
+    if (document.body)
+        basil.start();
+    else
+        setTimeout(waitForBody, 10);
+})();
+
+basil.registerRenderTestPlugin(function addFilterLink(li, test) {
+    var filterElement = document.createElement('i');
+    filterElement.setAttribute('class', 'basil-test-apply-filter icon-filter');
+    filterElement.addEventListener('click', function(event) {
+        event.stopPropagation();
+
+        basil.abort();
+        document.getElementById('basil-filter').value = test.fullKey();
+        document.getElementById('basil-settings').submit();
+    });
+
+    li.appendChild(filterElement);
+});
 
 test = describe = when = then = it = basil.test;

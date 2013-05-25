@@ -118,8 +118,9 @@
         }
     };
 
-    function Test (name) {
+    function Test (name, parent) {
         this._name = name;
+        this._parent = parent;
         this._runCount = 0;
         this._children = {};
         this._error = null;
@@ -128,6 +129,16 @@
     Test.prototype = {
         name: function() {
             return this._name;
+        },
+
+        key: function() {
+            return this.name().toLowerCase().replace(/>/g, '');
+        },
+
+        fullKey: function() {
+            return this._parent
+                ? this._parent.fullKey() + '>' + this.key()
+                : this.key();
         },
 
         isComplete: function() {
@@ -168,7 +179,7 @@
             if (this._children[name])
                 return this._children[name];
 
-            return this._children[name] = new Test(name);
+            return this._children[name] = new Test(name, this);
         },
 
         children: function() {
