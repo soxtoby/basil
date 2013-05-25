@@ -344,7 +344,7 @@
 
     browserRunner.registerRenderTestPlugin(function (testElement, test) {
         var expandCollapseIcon = document.createElement('i');
-        expandCollapseIcon.className = 'basil-test-icon basil-expandcollapse';
+        expandCollapseIcon.className = 'basil-test-icon basil-test-button';
         testElement.appendChild(expandCollapseIcon);
 
         if (!test.children().length)
@@ -399,7 +399,7 @@
     });
 })(basil);
 
-(function testErrorTextPlugin(browserRunner) {
+(function errorTextPlugin(browserRunner) {
     browserRunner.registerRenderTestPlugin(function (testElement, test) {
         var error = test.error();
         if (error)
@@ -413,7 +413,7 @@
             return;
 
         var inspectElement = document.createElement('i');
-        inspectElement.className = 'basil-test-icon basil-inspect icon-signin';
+        inspectElement.className = 'basil-test-icon basil-test-button icon-signin';
         inspectElement.addEventListener('click', function() {
             debugger;
             test.inspect();
@@ -425,7 +425,7 @@
 (function filterPlugin(browserRunner) {
     basil.registerRenderTestPlugin(function (testElement, test) {
         var filterElement = document.createElement('i');
-        filterElement.className = 'basil-test-icon basil-test-apply-filter icon-filter';
+        filterElement.className = 'basil-test-icon basil-test-button icon-filter';
         filterElement.addEventListener('click', function() {
             browserRunner.abort();
             document.getElementById('basil-filter').value = test.fullKey();
@@ -441,16 +441,22 @@
         if (!test.inspect)
             return;
 
-        var checkbox = document.createElement('input');
-        checkbox.setAttribute('type', 'checkbox');
-        checkbox.className = 'basil-test-icon toggle-fail-code';
+        var codeIcon = document.createElement('i');
+        codeIcon.className = 'basil-test-icon basil-test-button icon-code';
+        testElement.appendChild(codeIcon);
 
-        var code = document.createElement('span');
+        var code = document.createElement('code');
         code.innerHTML = test.inspect.toString().split("\n").slice(1, -1).join("\n");
-        code.setAttribute('class', 'fail-code');
-
-        testElement.appendChild(checkbox);
+        code.className = 'basil-code';
         testElement.appendChild(code);
+
+        var isVisible = false;
+        codeIcon.addEventListener('click', function() {
+            isVisible = !isVisible;
+            code.className = isVisible
+                ? 'basil-code is-basil-code-visible'
+                : 'basil-code';
+        });
     });
 })(basil);
 

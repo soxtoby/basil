@@ -72,20 +72,7 @@ body {
     display: none;
 }
 
-/* Parents */
-.basil-parent {
-    font-weight: bold;
-}
-
-.basil-parent.is-collapsed > ul {
-    display: none;
-}
-
-.basil-expandcollapse {
-    opacity: 0.2;
-    cursor: pointer;
-}
-
+/* Test icons */
 .basil-test-icon,
 .basil-test-icon[class^="icon-"],
 .basil-test-icon[class*=" icon-"]
@@ -93,6 +80,25 @@ body {
     display: inline-block;
     width: 1em;
     text-align: center;
+}
+
+.basil-test-button {
+    opacity: 0.2;
+    cursor: pointer;
+}
+
+.basil-test-button:hover {
+    opacity: 1;
+    color: hsl(200, 80%, 40%);
+}
+
+/* Parents */
+.basil-parent {
+    font-weight: bold;
+}
+
+.basil-parent.is-collapsed > ul {
+    display: none;
 }
 
 /* Leaves */
@@ -103,59 +109,19 @@ body {
 }
 
 /* Links */
-.basil-test-apply-filter {
-    cursor: pointer;
-    opacity: 0.2;
-    padding: 2px;
-}
-.basil-test-apply-filter:hover {
-    opacity: 1;
-    color: hsl(200, 80%, 40%);
-}
-
-.basil-inspect {
-    opacity: 0.2;
-    padding: 2px;
-}
-
-.basil-inspect:hover {
-    opacity: 1;
-    color: hsl(200, 80%, 40%);
-}
-
 .is-running {
     opacity: 0.3;
 }
 
 /* Code */
-.toggle-fail-code {
-    cursor: pointer;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.toggle-fail-code:before {
-    content: '';
-    font-family: FontAwesome;
-    width: 1em;
-    height: 0.7em;
-    opacity: 0.2;
-}
-
-.toggle-fail-code:hover:before,
-.toggle-fail-code:checked:before {
-    opacity: 1;
-    color: hsl(200, 80%, 40%);
-}
-
-.fail-code {
-    font-family: Consolas, monospace;
-    white-space: pre;
+.basil-code {
     display: none;
+    font-family: Consolas, monospace;
     font-size: 0.7em;
+    white-space: pre;
 }
 
-.toggle-fail-code:checked ~ .fail-code {
+.is-basil-code-visible {
     display: block;
 }
 
