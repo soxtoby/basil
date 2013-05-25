@@ -1,8 +1,10 @@
 ﻿(function(global) {
     var localStorage = global.localStorage || {};
 
-    var totalCounts = [];
-    var totalPasses = [];
+    var rootTests = [];
+    var totalCount = 0;
+    var totalFails = 0;
+    var totalPasses = 0;
     var hasFailed = false;
 
     var originalTitle = document.title;
@@ -16,16 +18,17 @@
     var baseTemplate =
         '<div id="basil-header">'
             + '<div id="basil-summary">'
-            + '<div>Total:<ul id="basil-totals"></ul></div>'
-            + '<div> Pass:<ul id="basil-passes"></ul></div>'
+                + '<span id="basil-passes"></span>/'
+                + '<span id="basil-fails"></span>/'
+                + '<span id="basil-total"></span>'
             + '</div>'
             + '<a id="basil-title"></a>'
             + '<form method="get" id="basil-settings">'
-            + '<label>Filter <input type="text" id="basil-filter" name="filter"></label>'
-            + '<label><input type="checkbox" id="basil-hide-passed" name="hide-passed">Hide Passed</label>'
+                + '<label>Filter <input type="text" id="basil-filter" name="filter"></label>'
+                + '<label><input type="checkbox" id="basil-hide-passed" name="hide-passed">Hide Passed</label>'
             + '</form>'
-            + '</div>'
-            + '<div id="basil-results"></div>';
+        + '</div>'
+        + '<div id="basil-results"></div>';
 
     var testRunner = global.basil = new Basil.TestRunner();
 
@@ -78,6 +81,9 @@
     }
 
     function onRootComplete (runTest, test) {
+        if (!test.runCount())
+            rootTests.push(test);
+
         runTest();
 
         if (test.isComplete()){
@@ -321,7 +327,7 @@
         if (favIconTimerId)
             clearTimeout(favIconTimerId);
 
-        document.title = "[" + totalCounts[0] + "] " + originalTitle;
+        document.title = "[" + totalPasses + '/' + totalFails + '/' + totalCount + "] " + originalTitle;
         setRunning();
         favIconTimerId = setTimeout(setNotRunning, 10);
     }
@@ -372,36 +378,24 @@
         favIcon.href = url;
     }
 
-    function updateTotals (test) {
-        calculateTotals([test], 0);
+    function updateTotals () {
+        totalPasses = totalFails = totalCount = 0;
+        rootTests.forEach(calculateTotals);
 
-        updateTotalsNode(document.getElementById('basil-totals'), totalCounts);
-        updateTotalsNode(document.getElementById('basil-passes'), totalPasses);
+        document.getElementById('basil-passes').innerText = totalPasses;
+        document.getElementById('basil-fails').innerText = totalFails;
+        document.getElementById('basil-total').innerText = totalCount;
     }
 
-    function calculateTotals (tests, level) {
-        if (!tests.length)
-            return;
-
-        var currentTotalCount = totalCounts[level] || 0;
-        totalCounts[level] = currentTotalCount + tests.length;
-
-        var currentPassCount = totalPasses[level] || 0;
-        var passingResults = tests.filter(function(test) { return test.hasPassed(); });
-        totalPasses[level] = currentPassCount + passingResults.length;
-
-        tests.forEach(function(test) { calculateTotals(test.children(), level + 1);});
-    }
-
-    function updateTotalsNode (listNode, totalCounts) {
-        totalCounts.forEach(function(totalCount, i) {
-            var nextNode = listNode.childNodes[i];
-            if (!nextNode) {
-                nextNode = document.createElement('li');
-                listNode.appendChild(nextNode);
-            }
-            nextNode.innerHTML = ' ' + ('      ' + totalCount).slice(-5);
-        });
+    function calculateTotals (test) {
+        totalCount++;
+        if (test.runCount()) {
+            if (test.hasPassed())
+                totalPasses++;
+            else
+                totalFails++;
+        }
+        test.children().forEach(calculateTotals);
     }
 
     var nursery;

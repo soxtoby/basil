@@ -161,21 +161,18 @@ li.is-failed:before {
 
 /* Summary */
 #basil-summary {
-    white-space: pre;
+    white-space: nowrap;
     position: absolute;
-    font-family: monospace;
     right: 10px;
+    font-size: 2em;
 }
 
-#basil-summary ul {
-    display: inline-block;
-    padding: 0;
-    margin: 0;
+#basil-passes {
+    color: forestgreen;
 }
 
-#basil-summary li {
-    display: inline-block;
-    height: 1em;
+#basil-fails {
+    color: firebrick;
 }
 
 /* Input */
