@@ -419,3 +419,5 @@
         return elements;
     }
 })(this);
+
+test = describe = when = then = it = basil.test;
