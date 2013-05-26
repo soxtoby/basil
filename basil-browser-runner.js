@@ -407,6 +407,20 @@
     });
 })(basil);
 
+(function filterPlugin(browserRunner) {
+    basil.registerRenderTestPlugin(function (testElement, test) {
+        var filterElement = document.createElement('i');
+        filterElement.className = 'basil-test-icon basil-test-button icon-filter';
+        filterElement.addEventListener('click', function() {
+            browserRunner.abort();
+            document.getElementById('basil-filter').value = test.fullKey();
+            document.getElementById('basil-settings').submit();
+        });
+
+        testElement.appendChild(filterElement);
+    });
+})(basil);
+
 (function inspectPlugin(browserRunner) {
     browserRunner.registerRenderTestPlugin(function (li, test) {
         if (!test.inspect)
@@ -419,20 +433,6 @@
             test.inspect();
         });
         li.appendChild(inspectElement);
-    });
-})(basil);
-
-(function filterPlugin(browserRunner) {
-    basil.registerRenderTestPlugin(function (testElement, test) {
-        var filterElement = document.createElement('i');
-        filterElement.className = 'basil-test-icon basil-test-button icon-filter';
-        filterElement.addEventListener('click', function() {
-            browserRunner.abort();
-            document.getElementById('basil-filter').value = test.fullKey();
-            document.getElementById('basil-settings').submit();
-        });
-
-        testElement.appendChild(filterElement);
     });
 })(basil);
 

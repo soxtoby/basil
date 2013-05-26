@@ -22,26 +22,11 @@ body {
 
 #basil-header input {
     border: none;
-    background: white;
     box-shadow: 1px 1px 6px hsl(76, 35%, 60%);
 }
 
 #basil-header.is-failed input {
     box-shadow: 1px 1px 6px hsl(0, 35%, 60%);
-}
-
-#basil-header input[type="checkbox"] {
-    height: 1em;
-    width: 1em;
-    vertical-align: text-top;
-    -webkit-appearance: none;
-}
-
-#basil-header input[type="checkbox"]:checked:before {
-    content: '✔';
-    position: relative;
-    top: -0.1em;
-    color: hsl(76, 35%, 50%);
 }
 
 #basil-title {
