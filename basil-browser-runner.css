@@ -119,6 +119,15 @@ body {
     display: block;
 }
 
+/* DOM Fixture */
+#basil-temporary-dom-element {
+    position: absolute;
+    top: 10000px;
+    left: 10000px;
+    width: 10000px;
+    height: 10000px;
+}
+
 /* Summary */
 #basil-summary {
     float: right;
