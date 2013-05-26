@@ -11,6 +11,15 @@ body {
     color: hsl(76, 35%, 95%);
     padding: 0.5em;
     text-shadow: 1px 1px 6px hsl(76, 35%, 60%);
+    overflow: hidden;
+    -webkit-transition: background 200ms;
+    -moz-transition: background 200ms;
+    transition: background 200ms;
+}
+
+#basil-header.is-running {
+    background: hsl(0, 0%, 85%);
+    text-shadow: 1px 1px 6px hsl(0, 0%, 60%);
 }
 
 #basil-header.is-failed {
@@ -29,15 +38,16 @@ body {
     box-shadow: 1px 1px 6px hsl(0, 35%, 60%);
 }
 
+.basil-header-section {
+    display: inline-block;
+    float: left;
+}
+
 #basil-title {
     font-size: 2em;
     color: white;
     text-decoration: none;
-    display: block;
-}
-
-#basil-settings {
-    display: inline-block;
+    margin-right: 1em;
 }
 
 #basil-results {
@@ -97,11 +107,6 @@ body {
     list-style: none;
 }
 
-/* Links */
-.is-running {
-    opacity: 0.3;
-}
-
 /* Code */
 .basil-code {
     display: none;
@@ -116,9 +121,11 @@ body {
 
 /* Summary */
 #basil-summary {
+    float: right;
     white-space: nowrap;
-    position: absolute;
-    right: 10px;
+    text-align: right;
+    min-width: 7em;
+    margin-left: 1em;
     font-size: 2em;
 }
 
@@ -130,10 +137,17 @@ body {
     color: firebrick;
 }
 
-/* Input */
+/* Filtering */
+#basil-settings {
+    width: 100%;
+    max-width: 35em;
+    position: relative;
+}
+
 #basil-filter {
-    width: 40em;
-    padding-left: 0.3em;
+    position: absolute;
+    left: 3em;
+    right: 0;
 }
 
 /* Passed/failed icon */

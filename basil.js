@@ -1,9 +1,9 @@
 ﻿(function(global) {
     function TestRunner () {
-        this._rootPlugins = [];
         this._setupPlugins = this._setupPlugins.slice();
         this._testPlugins = this._testPlugins.slice();
         this._testQueue = [];
+        this._rootTests = [];
         this._started = false;
         this.test = this.test.bind(this);
     }
@@ -30,25 +30,6 @@
             this._aborted = true;
         },
 
-        _extractName: function(fn) {
-            if (fn.name)
-                return fn.name;
-
-            var fnContents = fn.toString();
-
-            fnContents = /function.+\{([\s\S]+)\}\w*$/.exec(fnContents)[1];
-            if (fnContents == null)
-                return "(No Name)";
-
-            return fnContents.replace(/\W+/gi, ' ').trim();
-        },
-
-        _createTest: function(name) {
-            return this._outerTest
-                ? this._outerTest.child(name)
-                : new Test(name);
-        },
-
         _runTest: function(name, fn) {
             if (this._aborted)
                 return;
@@ -68,7 +49,27 @@
             return test;
         },
 
+        _extractName: function(fn) {
+            if (fn.name)
+                return fn.name;
+
+            var fnContents = fn.toString();
+
+            fnContents = /function.+\{([\s\S]+)\}\w*$/.exec(fnContents)[1];
+            if (fnContents == null)
+                return "(No Name)";
+
+            return fnContents.replace(/\W+/gi, ' ').trim();
+        },
+
+        _createTest: function(name) {
+            return this._outerTest
+                ? this._outerTest.child(name)
+                : new Test(name);
+        },
+
         _runTree: function(test, fn) {
+            this._rootTests.push(test);
             while (!test.isComplete()) {
                 this._branchHasBeenRun = false;
                 this._thisValue = {};
@@ -107,6 +108,10 @@
             this._outerTest = test;
             test.run(fn, this._thisValue);
             this._outerTest = outerTest;
+        },
+
+        tests: function() {
+            return this._rootTests;
         },
 
         registerSetupPlugin: function(fn) {
@@ -198,13 +203,10 @@
         }
     };
 
-    function CannotInterceptExistingMethodError (message) { this.message = message; }
-
     function PluginDidNotDelegateError () { this.message = "A registered plugin did not delegate"; }
 
     global.Basil = {
         Test: Test,
-        TestRunner: TestRunner,
-        CannotInterceptExistingMethodError: CannotInterceptExistingMethodError
+        TestRunner: TestRunner
     };
 })(this);

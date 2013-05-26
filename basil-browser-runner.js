@@ -30,10 +30,6 @@
         }
     });
 
-    var rootTests = [];
-    var totalCount = 0;
-    var totalFails = 0;
-    var totalPasses = 0;
     var hasFailed = false;
 
     var originalTitle = document.title;
@@ -45,12 +41,7 @@
     var runningFailedIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB90CBw0qMMQJoV8AAAIRSURBVDjLpZNPSFRRFMZ/575RLMsIJCU0UIwwN0EDVhYYQtjChYskaBH92UQrIYiI2lRSUC0E19FSiKBFELg1ixYt2khUSI4tFSxnnHnvnnNavBnbKl344HI4/M73ce8Rd+d/joxPzt48PVx8slbxVnfADDdDTXFzzA1XxdxxVdSMtuasvLj46/br5xMzheJQcbqppTV0tOxocGu5otPATKGSeaisbezY+mbmAaDg6jy61LdjwPXHP8kBbgCkUXHAzVEDwzFz1AyNnsuNVJ2ezr2oaQ6g/goSBHHHg+DiiAkhCCIBEUUSJ7FAIeb9FnNAaJACICJIEJIghESQAEmApiRhbuwCb8+O4kmWAzR3Htzq/0BkCxQkn54kQiIQAsQ0pb3/MG9OjhCrNawRoXGh7gAAd14Nj+HRsJgRY8b+vh46B49TLW8w0zuAXp3KATHLthwI4O6ICJZmDFy+iJtiquDOemmFrqFB0s0yx57d4OHUlX0Fr2dJAG9EcSemNdyU1W8/sJhhWYZmGbU/v+k+c4qsUmZpfn61YGb/ItSFCLFaRWOk7VAXphE3Y325xJ7OA5Tef+D7l88oWpTxydnZju6DE6aKqaGqmBknXtwiTWtYmhLTGu1H++k9N8LywgJfPy3w8drku7mn987j7tvSA9lVfjky6ncprNwhHGnUZbvrfF+ay5bIbtO0d8p9qVH/C58rTkV50AKSAAAAAElFTkSuQmCC';
 
     var baseTemplate =
-        '<div id="basil-header">'
-            + '<div id="basil-summary">'
-                + '<span id="basil-passes"></span>/'
-                + '<span id="basil-fails"></span>/'
-                + '<span id="basil-total"></span>'
-            + '</div>'
+        '<div id="basil-header" class="is-running">'
         + '</div>'
         + '<div id="basil-results"></div>';
 
@@ -88,15 +79,11 @@
     }
 
     function onRootComplete (runTest, test) {
-        if (!test.runCount())
-            rootTests.push(test);
-
         runTest();
 
         if (test.isComplete()){
             var resultsElement = document.getElementById('basil-results');
             appendResults(resultsElement, [test]);
-            updateTotals(test);
 
             if (!test.hasPassed()) {
                 hasFailed = true;
@@ -173,7 +160,6 @@
         if (favIconTimerId)
             clearTimeout(favIconTimerId);
 
-        document.title = "[" + totalPasses + '/' + totalFails + '/' + totalCount + "] " + originalTitle;
         setRunning();
         favIconTimerId = setTimeout(setNotRunning, 10);
     }
@@ -224,26 +210,6 @@
         favIcon.href = url;
     }
 
-    function updateTotals () {
-        totalPasses = totalFails = totalCount = 0;
-        rootTests.forEach(calculateTotals);
-
-        document.getElementById('basil-passes').innerText = totalPasses;
-        document.getElementById('basil-fails').innerText = totalFails;
-        document.getElementById('basil-total').innerText = totalCount;
-    }
-
-    function calculateTotals (test) {
-        totalCount++;
-        if (test.runCount()) {
-            if (test.hasPassed())
-                totalPasses++;
-            else
-                totalFails++;
-        }
-        test.children().forEach(calculateTotals);
-    }
-
     var nursery;
 
     function createDom (html) {
@@ -267,6 +233,34 @@
         setTimeout(waitForBody, 10);
 })();
 
+(function testCountPlugin(testRunner) {
+    testRunner.registerTestPlugin(function (runTest) {
+        runTest();
+
+        var counts = testRunner.testCounts = {
+            passed: 0,
+            failed: 0,
+            total: 0
+        };
+
+        testRunner.tests().forEach(countLeaves);
+
+        function countLeaves(test) {
+            var children = test.children();
+            if (children.length)
+                return children.forEach(countLeaves);
+
+            counts.total++;
+            if (test.runCount()) {
+                if (test.hasPassed())
+                    counts.passed++;
+                else
+                    counts.failed++;
+            }
+        }
+    });
+})(basil);
+
 (function titlePlugin(browserRunner, location) {
     var title = document.title || 'Basil';
 
@@ -275,8 +269,42 @@
         titleElement.href = location.href.replace(location.search, '');
         titleElement.innerText = title;
         titleElement.id = 'basil-title';
+        titleElement.className = 'basil-header-section';
     });
 })(basil, document.location);
+
+(function displayTestCountPlugin(browserRunner) {
+    var originalTitle = document.title;
+    var passed, failed, total;
+
+    browserRunner.registerPagePlugin(function (header, results) {
+        var container = header.appendChild(document.createElement('div'));
+        container.id = 'basil-summary';
+
+        passed = container.appendChild(document.createElement('span'));
+        passed.id = 'basil-passes';
+
+        container.appendChild(document.createTextNode('/'));
+
+        failed = container.appendChild(document.createElement('span'));
+        failed.id = 'basil-fails';
+
+        container.appendChild(document.createTextNode('/'));
+
+        total = container.appendChild(document.createElement('span'));
+        total.id = 'basil-total';
+    });
+
+    browserRunner.registerTestPlugin(function (runTest) {
+        runTest();
+
+        passed.innerText = browserRunner.testCounts.passed;
+        failed.innerText = browserRunner.testCounts.failed;
+        total.innerText = browserRunner.testCounts.total;
+
+        document.title = "[" + browserRunner.testCounts.passed + '/' + browserRunner.testCounts.failed + '/' + browserRunner.testCounts.total + "] " + originalTitle;
+    });
+})(basil);
 
 (function expandCollapsePlugin(browserRunner, localStorage) {
     localStorage = localStorage || {};
@@ -356,12 +384,16 @@
     var testDepth = 0;
     var filterForm, filterInput;
 
-    browserRunner.registerPagePlugin(function (header, results) {
+    browserRunner.registerPagePlugin(function (header) {
         filterForm = header.appendChild(document.createElement('form'));
         filterForm.id = 'basil-settings';
+        filterForm.className = 'basil-header-section';
         filterForm.action = location.href;
 
+        filterForm.appendChild(document.createTextNode('Filter'));
+
         filterInput = filterForm.appendChild(document.createElement('input'));
+        filterInput.id = 'basil-filter';
         filterInput.type = 'text';
         filterInput.name = 'filter';
         filterInput.value = filter;
@@ -458,6 +490,7 @@
 
     browserRunner.registerPagePlugin(function (header, results) {
         var label = header.appendChild(document.createElement('label'));
+        label.className = 'basil-header-section';
 
         var checkbox = label.appendChild(document.createElement('input'));
         checkbox.type = 'checkbox';
