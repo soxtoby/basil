@@ -138,11 +138,11 @@ body {
     font-size: 2em;
 }
 
-#basil-passes {
+.basil-passes {
     color: forestgreen;
 }
 
-#basil-fails {
+.basil-fails {
     color: firebrick;
 }
 

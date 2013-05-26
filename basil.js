@@ -125,8 +125,9 @@
             return this._rootTests;
         },
 
-        registerPlugin: function(plugin) {
-            this._plugins.push(plugin);
+        registerPlugin: function() {
+            for (var i = 0; i < arguments.length; i++)
+                this._plugins.push(arguments[i]);
         }
     };
 
