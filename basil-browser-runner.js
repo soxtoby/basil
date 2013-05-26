@@ -30,8 +30,6 @@
         }
     });
 
-    var localStorage = global.localStorage || {};
-
     var rootTests = [];
     var totalCount = 0;
     var totalFails = 0;
@@ -54,24 +52,13 @@
                 + '<span id="basil-total"></span>'
             + '</div>'
             + '<a id="basil-title"></a>'
-            + '<form method="get" id="basil-settings">'
-                + '<label>Filter <input type="text" id="basil-filter" name="filter"></label>'
-            + '</form>'
         + '</div>'
         + '<div id="basil-results"></div>';
 
     var testRunner = global.basil = new BrowserRunner();
 
-    var filterParts = (param('filter') || '')
-        .toLowerCase()
-        .split('>')
-        .filter(Boolean)
-        .map(function(filterPart) { return filterPart.trim();});
-    var testDepth = 0;
-
     testRunner.registerSetupPlugin(setupDomFixture);
     testRunner.registerSetupPlugin(onRootComplete);
-    testRunner.registerTestPlugin(filterTests);
 
 
     function setupDomFixture(runTest) {
@@ -127,35 +114,6 @@
         return test;
     }
 
-    function filterTests (runTest, test) {
-        var testKey = test.key();
-
-        var isPartialMatch = testKey.indexOf(filterParts[testDepth] || '') > -1;
-        var isExactMatch = testKey === filterParts[testDepth];
-        var testMatchesFilter = isExactMatch
-            || (isPartialMatch && testDepth == filterParts.length - 1)
-            || testDepth >= filterParts.length;
-
-        if (!testMatchesFilter)
-            test.skip();
-
-        testDepth++;
-        runTest();
-        testDepth--;
-    }
-
-    function param (key) {
-        var query = window.location.search.substring(1);
-        var vars = query.split('&');
-        for (var i = 0; i < vars.length; i++) {
-            var pair = vars[i].split('=');
-            if (decodeURIComponent(pair[0]) == key) {
-                var value = pair[1].replace(/\+/g, ' ');
-                return decodeURIComponent(value);
-            }
-        }
-    }
-
     function setup () {
         setFavIconElement(runningPassedIcon);
 
@@ -168,7 +126,6 @@
         });
 
         setTitle();
-        setupSettingsForm();
 
         function createBaseStructure () {
             var body = document.body;
@@ -181,17 +138,6 @@
             var titleText = pageTitle.length ? pageTitle[0].innerText : 'Basil';
             document.getElementById('basil-title').innerText = titleText;
             document.getElementById('basil-title').href = document.location.href.replace(document.location.search, '');
-        }
-
-        function setupSettingsForm () {
-            document.getElementById('basil-settings').setAttribute('action', document.location.href);
-            document.getElementById('basil-settings').addEventListener('submit', function() {
-                testRunner.abort();
-            });
-
-            var filter = document.getElementById('basil-filter');
-            filter.setAttribute('value', param('filter') || '');
-            filter.focus();
         }
     }
 
@@ -331,34 +277,6 @@
         setTimeout(waitForBody, 10);
 })();
 
-/* Header Plugins */
-(function hidePassedPlugin(browserRunner, localStorage) {
-    localStorage = localStorage || {};
-
-    browserRunner.registerPagePlugin(function (header, results) {
-        var label = header.appendChild(document.createElement('label'));
-
-        var checkbox = label.appendChild(document.createElement('input'));
-        checkbox.type = 'checkbox';
-        checkbox.checked = localStorage.isHidePassedChecked == 'true';
-
-        label.appendChild(document.createTextNode('Hide Passed'));
-
-        updateHidePassedState();
-
-        checkbox.addEventListener('change', updateHidePassedState);
-
-        function updateHidePassedState () {
-            localStorage.isHidePassedChecked = checkbox.checked;
-            if (checkbox.checked)
-                results.setAttribute('class', 'is-hiding-passed');
-            else
-                results.removeAttribute('class');
-        }
-    });
-})(basil, localStorage);
-
-/* Test Render Plugins */
 
 (function expandCollapsePlugin(browserRunner, localStorage) {
     localStorage = localStorage || {};
@@ -428,19 +346,73 @@
     });
 })(basil);
 
-(function filterPlugin(browserRunner) {
-    basil.registerTestRenderPlugin(function (testElement, test) {
+(function filterPlugin(browserRunner, location) {
+    var filter = (param('filter') || '');
+    var filterParts = filter
+        .toLowerCase()
+        .split('>')
+        .filter(Boolean)
+        .map(function(filterPart) { return filterPart.trim(); });
+    var testDepth = 0;
+    var filterForm, filterInput;
+
+    browserRunner.registerPagePlugin(function (header, results) {
+        filterForm = header.appendChild(document.createElement('form'));
+        filterForm.id = 'basil-settings';
+        filterForm.action = location.href;
+
+        filterInput = filterForm.appendChild(document.createElement('input'));
+        filterInput.type = 'text';
+        filterInput.name = 'filter';
+        filterInput.value = filter;
+        filterInput.focus();
+
+        filterForm.addEventListener('submit', function() {
+            browserRunner.abort();
+        });
+    })
+
+    browserRunner.registerTestRenderPlugin(function (testElement, test) {
         var filterElement = document.createElement('i');
         filterElement.className = 'basil-test-icon basil-test-button icon-filter';
         filterElement.addEventListener('click', function() {
             browserRunner.abort();
-            document.getElementById('basil-filter').value = test.fullKey();
-            document.getElementById('basil-settings').submit();
+            filterInput.value = test.fullKey();
+            filterForm.submit();
         });
 
         testElement.appendChild(filterElement);
     });
-})(basil);
+
+    browserRunner.registerTestPlugin(function (runTest, test) {
+        var testKey = test.key();
+
+        var isPartialMatch = testKey.indexOf(filterParts[testDepth] || '') > -1;
+        var isExactMatch = testKey === filterParts[testDepth];
+        var testMatchesFilter = isExactMatch
+            || (isPartialMatch && testDepth == filterParts.length - 1)
+            || testDepth >= filterParts.length;
+
+        if (!testMatchesFilter)
+            test.skip();
+
+        testDepth++;
+        runTest();
+        testDepth--;
+    });
+
+    function param(key) {
+        var query = location.search.substring(1);
+        var vars = query.split('&');
+        for (var i = 0; i < vars.length; i++) {
+            var pair = vars[i].split('=');
+            if (decodeURIComponent(pair[0]) == key) {
+                var value = pair[1].replace(/\+/g, ' ');
+                return decodeURIComponent(value);
+            }
+        }
+    }
+})(basil, document.location);
 
 (function inspectPlugin(browserRunner) {
     browserRunner.registerTestRenderPlugin(function (li, test) {
@@ -480,5 +452,31 @@
         });
     });
 })(basil);
+
+(function hidePassedPlugin(browserRunner, localStorage) {
+    localStorage = localStorage || {};
+
+    browserRunner.registerPagePlugin(function (header, results) {
+        var label = header.appendChild(document.createElement('label'));
+
+        var checkbox = label.appendChild(document.createElement('input'));
+        checkbox.type = 'checkbox';
+        checkbox.checked = localStorage.isHidePassedChecked == 'true';
+
+        label.appendChild(document.createTextNode('Hide Passed'));
+
+        updateHidePassedState();
+
+        checkbox.addEventListener('change', updateHidePassedState);
+
+        function updateHidePassedState () {
+            localStorage.isHidePassedChecked = checkbox.checked;
+            if (checkbox.checked)
+                results.setAttribute('class', 'is-hiding-passed');
+            else
+                results.removeAttribute('class');
+        }
+    });
+})(basil, localStorage);
 
 test = describe = when = then = it = basil.test;
