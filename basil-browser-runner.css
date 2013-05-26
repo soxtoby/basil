@@ -36,6 +36,10 @@ body {
     display: block;
 }
 
+#basil-settings {
+    display: inline-block;
+}
+
 #basil-results {
     padding: 1em 1.5em;
 }

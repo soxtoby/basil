@@ -11,16 +11,21 @@
     function BrowserRunner() {
         Basil.TestRunner.call(this);
 
+        this._pagePlugins = [];
         this._renderTestPlugins = [];
     }
 
     BrowserRunner.prototype = extend(Basil.TestRunner, {
-        start: function() {
+        start: function () {
             setup();
             Basil.TestRunner.prototype.start.call(this);
         },
 
-        registerRenderTestPlugin: function(plugin) {
+        registerPagePlugin: function (plugin) {
+            this._pagePlugins.push(plugin);
+        },
+
+        registerTestRenderPlugin: function (plugin) {
             this._renderTestPlugins.push(plugin);
         }
     });
@@ -51,7 +56,6 @@
             + '<a id="basil-title"></a>'
             + '<form method="get" id="basil-settings">'
                 + '<label>Filter <input type="text" id="basil-filter" name="filter"></label>'
-                + '<label><input type="checkbox" id="basil-hide-passed" name="hide-passed">Hide Passed</label>'
             + '</form>'
         + '</div>'
         + '<div id="basil-results"></div>';
@@ -156,9 +160,15 @@
         setFavIconElement(runningPassedIcon);
 
         createBaseStructure();
+
+        var header = document.getElementById('basil-header');
+        var results = document.getElementById('basil-results');
+        testRunner._pagePlugins.forEach(function (plugin) {
+            plugin(header, results);
+        });
+
         setTitle();
         setupSettingsForm();
-        setupHidePassed();
 
         function createBaseStructure () {
             var body = document.body;
@@ -182,24 +192,6 @@
             var filter = document.getElementById('basil-filter');
             filter.setAttribute('value', param('filter') || '');
             filter.focus();
-        }
-
-        function setupHidePassed () {
-            var checkbox = document.getElementById('basil-hide-passed');
-            var results = document.getElementById('basil-results');
-
-            checkbox.checked = localStorage.isHidePassedChecked == 'true';
-            updateHidePassedState();
-
-            checkbox.addEventListener('change', updateHidePassedState);
-
-            function updateHidePassedState () {
-                localStorage.isHidePassedChecked = checkbox.checked;
-                if (checkbox.checked)
-                    results.setAttribute('class', 'is-hiding-passed');
-                else
-                    results.removeAttribute('class');
-            }
         }
     }
 
@@ -339,10 +331,39 @@
         setTimeout(waitForBody, 10);
 })();
 
+/* Header Plugins */
+(function hidePassedPlugin(browserRunner, localStorage) {
+    localStorage = localStorage || {};
+
+    browserRunner.registerPagePlugin(function (header, results) {
+        var label = header.appendChild(document.createElement('label'));
+
+        var checkbox = label.appendChild(document.createElement('input'));
+        checkbox.type = 'checkbox';
+        checkbox.checked = localStorage.isHidePassedChecked == 'true';
+
+        label.appendChild(document.createTextNode('Hide Passed'));
+
+        updateHidePassedState();
+
+        checkbox.addEventListener('change', updateHidePassedState);
+
+        function updateHidePassedState () {
+            localStorage.isHidePassedChecked = checkbox.checked;
+            if (checkbox.checked)
+                results.setAttribute('class', 'is-hiding-passed');
+            else
+                results.removeAttribute('class');
+        }
+    });
+})(basil, localStorage);
+
+/* Test Render Plugins */
+
 (function expandCollapsePlugin(browserRunner, localStorage) {
     localStorage = localStorage || {};
 
-    browserRunner.registerRenderTestPlugin(function (testElement, test) {
+    browserRunner.registerTestRenderPlugin(function (testElement, test) {
         var expandCollapseIcon = document.createElement('i');
         expandCollapseIcon.className = 'basil-test-icon basil-test-button';
         testElement.appendChild(expandCollapseIcon);
@@ -386,7 +407,7 @@
 })(basil, localStorage);
 
 (function passedFailedIconPlugin(browserRunner) {
-    browserRunner.registerRenderTestPlugin(function (testElement, test) {
+    browserRunner.registerTestRenderPlugin(function (testElement, test) {
         var icon = document.createElement('i');
         icon.className = 'basil-test-icon ' + (test.hasPassed() ? 'icon-ok' : 'icon-remove');
         testElement.appendChild(icon);
@@ -394,13 +415,13 @@
 })(basil);
 
 (function testNamePlugin(browserRunner) {
-    browserRunner.registerRenderTestPlugin(function (testElement, test) {
+    browserRunner.registerTestRenderPlugin(function (testElement, test) {
         testElement.appendChild(document.createTextNode(test.name()));
     });
 })(basil);
 
 (function errorTextPlugin(browserRunner) {
-    browserRunner.registerRenderTestPlugin(function (testElement, test) {
+    browserRunner.registerTestRenderPlugin(function (testElement, test) {
         var error = test.error();
         if (error)
             testElement.appendChild(document.createTextNode(' (' + error + ')'));
@@ -408,7 +429,7 @@
 })(basil);
 
 (function filterPlugin(browserRunner) {
-    basil.registerRenderTestPlugin(function (testElement, test) {
+    basil.registerTestRenderPlugin(function (testElement, test) {
         var filterElement = document.createElement('i');
         filterElement.className = 'basil-test-icon basil-test-button icon-filter';
         filterElement.addEventListener('click', function() {
@@ -422,7 +443,7 @@
 })(basil);
 
 (function inspectPlugin(browserRunner) {
-    browserRunner.registerRenderTestPlugin(function (li, test) {
+    browserRunner.registerTestRenderPlugin(function (li, test) {
         if (!test.inspect)
             return;
 
@@ -437,7 +458,7 @@
 })(basil);
 
 (function viewCodePlugin(browserRunner) {
-    browserRunner.registerRenderTestPlugin(function (testElement, test) {
+    browserRunner.registerTestRenderPlugin(function (testElement, test) {
         if (!test.inspect)
             return;
 
