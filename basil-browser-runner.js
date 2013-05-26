@@ -15,8 +15,7 @@
         this._renderTestPlugins = [];
         this._onCompleteCallbacks = [];
 
-        this.registerSetupPlugin(this._postponeComplete.bind(this));
-        this.registerSetupPlugin(onRootComplete);
+        this.registerSetupPlugin(this._onRootTestRun.bind(this));
     }
 
     BrowserRunner.prototype = extend(Basil.TestRunner, {
@@ -29,7 +28,7 @@
             var header = document.body.appendChild(document.createElement('div'));
             header.id = 'basil-header';
 
-            var results = document.body.appendChild(document.createElement('div'));
+            var results = this._resultsElement = document.body.appendChild(document.createElement('div'));
             results.id = 'basil-results';
 
             this._pagePlugins.forEach(function (plugin) {
@@ -45,16 +44,44 @@
             this._renderTestPlugins.push(plugin);
         },
 
-        onComplete: function (callback) {
-            this._onCompleteCallbacks.push(callback);
-        },
-
-        _postponeComplete: function (runTest) {
-            if (runTest)
-                runTest();
+        _onRootTestRun: function (runTest, test) {
+            runTest();
 
             clearTimeout(this._completedTimeout);
             this._completedTimeout = setTimeout(this._complete.bind(this), 10);
+
+            if (test.isComplete())
+                this._appendResults(this._resultsElement, [test]);
+        },
+
+        _appendResults: function (el, tests) {
+            tests = tests.filter(function(t) { return !t.wasSkipped(); });
+
+            if (!tests.length)
+                return;
+
+            var ul = document.createElement('ul');
+            tests.forEach(function(test, i) {
+                var li = this._createTestElement(test);
+                this._appendResults(li, test.children());
+                ul.appendChild(li);
+            }, this);
+
+            el.appendChild(ul);
+        },
+
+        _createTestElement: function (test) {
+            var li = document.createElement('li');
+
+            testRunner._renderTestPlugins.forEach(function(plugin) {
+                plugin(li, test);
+            });
+
+            return li;
+        },
+
+        onComplete: function (callback) {
+            this._onCompleteCallbacks.push(callback);
         },
 
         _complete: function () {
@@ -65,55 +92,6 @@
     });
 
     var testRunner = global.basil = new BrowserRunner();
-
-    function onRootComplete (runTest, test) {
-        runTest();
-
-        if (test.isComplete()){
-            var resultsElement = document.getElementById('basil-results');
-            appendResults(resultsElement, [test]);
-        }
-
-        return test;
-    }
-
-    function appendResults (el, tests) {
-        tests = tests.filter(function(t) { return !t.wasSkipped(); });
-
-        if (!tests.length)
-            return;
-
-        var ul = document.createElement('ul');
-        tests.forEach(function(test, i) {
-            var li = createLi(test);
-            appendResults(li, test.children());
-            ul.appendChild(li);
-        });
-
-        el.appendChild(ul);
-    }
-
-    function createLi (test) {
-        var li = document.createElement('li');
-        li.test = test;
-        li.setAttribute('class', getCssClass(li));
-
-        testRunner._renderTestPlugins.forEach(function(plugin) {
-            plugin(li, test);
-        });
-
-        return li;
-    }
-
-    function getCssClass (li) {
-        var test = li.test;
-        var cssClass = test.isComplete()
-            ? (test.hasPassed() ? 'is-passed' : 'is-failed')
-            : 'is-not-run';
-
-        cssClass += test.children().length ? ' basil-parent' : ' basil-leaf';
-        return cssClass;
-    }
 })(this);
 
 (function waitForBody () {
