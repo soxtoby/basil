@@ -163,7 +163,7 @@
         describe("plugins", function() {
             when("a setup plugin is registered", function() {
                 var pluginFunction = sinon.stub();
-                sut.registerSetupPlugin(pluginFunction);
+                sut.registerPlugin({ setup: pluginFunction });
 
                 then(function() { expect(pluginFunction).to.not.have.been.called; });
 
@@ -185,7 +185,7 @@
 
                 when("registering a second plugin", function() {
                     var pluginFunction2 = sinon.stub().yields();
-                    sut.registerSetupPlugin(pluginFunction2);
+                    sut.registerPlugin({ setup: pluginFunction2 });
 
                     when("running test", function() {
                         sut.test("TestName", function() {});
@@ -210,7 +210,7 @@
 
             when("a test plugin is registered", function() {
                 var pluginFunction = sinon.stub().yields();
-                sut.registerTestPlugin(pluginFunction);
+                sut.registerPlugin({ test: pluginFunction });
 
                 then(function() { expect(pluginFunction).to.not.have.been.called; });
 

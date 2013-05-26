@@ -1,7 +1,6 @@
 ﻿(function(global) {
     function TestRunner () {
-        this._setupPlugins = this._setupPlugins.slice();
-        this._testPlugins = this._testPlugins.slice();
+        this._plugins = this._plugins.slice();
         this._testQueue = [];
         this._rootTests = [];
         this._started = false;
@@ -9,8 +8,7 @@
     }
 
     TestRunner.prototype = {
-        _setupPlugins: [],
-        _testPlugins: [],
+        _plugins: [],
 
         test: function(name, fn) {
             if (this._started)
@@ -74,7 +72,7 @@
                 this._branchHasBeenRun = false;
                 this._thisValue = {};
 
-                this._runWithPlugins(this._runSingleBranch.bind(this, test, fn), this._setupPlugins, this._thisValue, [test]);
+                this.runPluginStack(this._runSingleBranch.bind(this, test, fn), 'setup', this._thisValue, [test]);
             }
         },
 
@@ -82,13 +80,13 @@
             if (test.isComplete() || this._branchHasBeenRun)
                 return;
 
-            this._runWithPlugins(this._runTestFunction.bind(this, test, fn), this._testPlugins, this._thisValue, [test]);
+            this.runPluginStack(this._runTestFunction.bind(this, test, fn), 'test', this._thisValue, [test]);
 
             this._branchHasBeenRun = true;
         },
 
-        _runWithPlugins: function(innerMostFunction, plugins, context, args) {
-            var functions = [innerMostFunction].concat(plugins);
+        runPluginStack: function(innerMostFunction, pluginMethod, context, args) {
+            var functions = [innerMostFunction].concat(this._pluginMethods(pluginMethod));
 
             callback();
 
@@ -98,6 +96,19 @@
             function callback () {
                 functions.pop().apply(context, [callback].concat(args));
             }
+        },
+
+        runPluginChain: function (pluginMethod, context, args) {
+            this._plugins.forEach(function (plugin) {
+                if (pluginMethod in plugin)
+                    plugin[pluginMethod].apply(context, args);
+            });
+        },
+
+        _pluginMethods: function (methodName) {
+            return this._plugins
+                .map(function (plugin) { return plugin[methodName]; })
+                .filter(function (func) { return !!func; });
         },
 
         _runTestFunction: function(test, fn) {
@@ -114,12 +125,8 @@
             return this._rootTests;
         },
 
-        registerSetupPlugin: function(fn) {
-            this._setupPlugins.push(fn);
-        },
-
-        registerTestPlugin: function(fn) {
-            this._testPlugins.push(fn);
+        registerPlugin: function(plugin) {
+            this._plugins.push(plugin);
         }
     };
 

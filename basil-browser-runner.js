@@ -10,12 +10,7 @@
 
     function BrowserRunner() {
         Basil.TestRunner.call(this);
-
-        this._pagePlugins = [];
-        this._renderTestPlugins = [];
-        this._onCompleteCallbacks = [];
-
-        this.registerSetupPlugin(this._onRootTestRun.bind(this));
+        this.registerPlugin({ setup: this._onRootTestRun.bind(this) });
     }
 
     BrowserRunner.prototype = extend(Basil.TestRunner, {
@@ -31,17 +26,7 @@
             var results = this._resultsElement = document.body.appendChild(document.createElement('div'));
             results.id = 'basil-results';
 
-            this._pagePlugins.forEach(function (plugin) {
-                plugin(header, results);
-            });
-        },
-
-        registerPagePlugin: function (plugin) {
-            this._pagePlugins.push(plugin);
-        },
-
-        registerTestRenderPlugin: function (plugin) {
-            this._renderTestPlugins.push(plugin);
+            this.runPluginChain('pageRender', this, [header, results]);
         },
 
         _onRootTestRun: function (runTest, test) {
@@ -73,24 +58,17 @@
         _createTestElement: function (test) {
             var li = document.createElement('li');
 
-            testRunner._renderTestPlugins.forEach(function(plugin) {
-                plugin(li, test);
-            });
+            this.runPluginChain('testRender', this, [li, test]);
 
             return li;
         },
 
-        onComplete: function (callback) {
-            this._onCompleteCallbacks.push(callback);
-        },
-
         _complete: function () {
-            this._onCompleteCallbacks.forEach(function (callback) {
-                callback();
-            });
+            this.runPluginChain('onComplete');
         }
     });
 
+    Basil.BrowserRunner = BrowserRunner;
     var testRunner = global.basil = new BrowserRunner();
 })(this);
 
@@ -102,52 +80,56 @@
 })();
 
 (function domFixturePlugin(testRunner) {
-    testRunner.registerSetupPlugin(function (runTest) {
-        var domElement = null;
+    testRunner.registerPlugin({
+        setup: function (runTest) {
+            var domElement = null;
 
-        Object.defineProperty(this, 'dom', {
-            get: function() {
-                if (domElement != null)
+            Object.defineProperty(this, 'dom', {
+                get: function() {
+                    if (domElement != null)
+                        return domElement;
+
+                    domElement = document.createElement('div');
+                    domElement.id = 'basil-temporary-dom-element';
+                    domElement.className = 'basil-temporary-dom-element';
+                    document.body.appendChild(domElement);
                     return domElement;
+                }
+            });
 
-                domElement = document.createElement('div');
-                domElement.id = 'basil-temporary-dom-element';
-                domElement.className = 'basil-temporary-dom-element';
-                document.body.appendChild(domElement);
-                return domElement;
-            }
-        });
+            runTest();
 
-        runTest();
-
-        if (domElement)
-            document.body.removeChild(domElement);
-    })
+            if (domElement)
+                document.body.removeChild(domElement);
+        }
+    });
 })(basil);
 
 (function testCountPlugin(testRunner) {
-    testRunner.registerTestPlugin(function (runTest) {
-        runTest();
+    testRunner.registerPlugin({
+        test: function (runTest) {
+            runTest();
 
-        var counts = testRunner.testCounts = {
-            passed: 0,
-            failed: 0,
-            total: 0
-        };
+            var counts = testRunner.testCounts = {
+                passed: 0,
+                failed: 0,
+                total: 0
+            };
 
-        testRunner.tests().forEach(countLeaves);
+            testRunner.tests().forEach(countLeaves);
 
-        function countLeaves(test) {
-            var children = test.children();
-            if (children.length)
-                return children.forEach(countLeaves);
+            function countLeaves(test) {
+                var children = test.children();
+                if (children.length)
+                    return children.forEach(countLeaves);
 
-            counts.total++;
-            if (test.runCount()) {
-                if (test.hasPassed())
-                    counts.passed++;
-                else
-                    counts.failed++;
+                counts.total++;
+                if (test.runCount()) {
+                    if (test.hasPassed())
+                        counts.passed++;
+                    else
+                        counts.failed++;
+                }
             }
         }
     });
@@ -156,26 +138,30 @@
 (function headerStatePlugin(testRunner) {
     var headerElement;
 
-    testRunner.registerPagePlugin(function (header) {
-        headerElement = header;
-        header.className += ' is-running';
-    });
+    testRunner.registerPlugin({
+        pageRender: function (header) {
+            headerElement = header;
+            header.className += ' is-running';
+        },
 
-    testRunner.onComplete(function () {
-        var stateClass = testRunner.testCounts.failed ? 'is-failed' : 'is-passed';
-        headerElement.className = headerElement.className.replace('is-running', stateClass);
+        onComplete: function () {
+            var stateClass = testRunner.testCounts.failed ? 'is-failed' : 'is-passed';
+            headerElement.className = headerElement.className.replace('is-running', stateClass);
+        }
     });
 })(basil);
 
 (function titlePlugin(browserRunner, location) {
     var title = document.title || 'Basil';
 
-    browserRunner.registerPagePlugin(function (header, results) {
-        var titleElement = header.appendChild(document.createElement('a'));
-        titleElement.href = location.href.replace(location.search, '');
-        titleElement.innerText = title;
-        titleElement.id = 'basil-title';
-        titleElement.className = 'basil-header-section';
+    browserRunner.registerPlugin({
+        pageRender: function (header) {
+            var titleElement = header.appendChild(document.createElement('a'));
+            titleElement.href = location.href.replace(location.search, '');
+            titleElement.innerText = title;
+            titleElement.id = 'basil-title';
+            titleElement.className = 'basil-header-section';
+        }
     });
 })(basil, document.location);
 
@@ -188,24 +174,26 @@
     var hasFailed = false;
     var lastRenderTime = 0;
 
-    browserRunner.registerPagePlugin(function () {
-        setFavIconElement(runningPassedIcon);
-    });
+    browserRunner.registerPlugin({
+        pageRender: function () {
+            setFavIconElement(runningPassedIcon);
+        },
 
-    browserRunner.registerSetupPlugin(function (runTest, test) {
-        runTest();
+        setup: function (runTest, test) {
+            runTest();
 
-        if (!hasFailed && test.isComplete() && !test.hasPassed()) {
-            hasFailed = true;
-            setFavIconElement(runningFailedIcon);
+            if (!hasFailed && test.isComplete() && !test.hasPassed()) {
+                hasFailed = true;
+                setFavIconElement(runningFailedIcon);
+            }
+        },
+
+        onComplete: function () {
+            if (hasFailed)
+                setFavIconElement(failedIcon);
+            else
+                setFavIconElement(passedIcon);
         }
-    });
-
-    browserRunner.onComplete(function () {
-        if (hasFailed)
-            setFavIconElement(failedIcon);
-        else
-            setFavIconElement(passedIcon);
     });
 
     function setFavIconElement (url) {
@@ -234,100 +222,110 @@
     var originalTitle = document.title;
     var passed, failed, total;
 
-    browserRunner.registerPagePlugin(function (header, results) {
-        var container = header.appendChild(document.createElement('div'));
-        container.id = 'basil-summary';
+    browserRunner.registerPlugin({
+        pageRender: function (header) {
+            var container = header.appendChild(document.createElement('div'));
+            container.id = 'basil-summary';
 
-        passed = container.appendChild(document.createElement('span'));
-        passed.id = 'basil-passes';
+            passed = container.appendChild(document.createElement('span'));
+            passed.id = 'basil-passes';
 
-        container.appendChild(document.createTextNode('/'));
+            container.appendChild(document.createTextNode('/'));
 
-        failed = container.appendChild(document.createElement('span'));
-        failed.id = 'basil-fails';
+            failed = container.appendChild(document.createElement('span'));
+            failed.id = 'basil-fails';
 
-        container.appendChild(document.createTextNode('/'));
+            container.appendChild(document.createTextNode('/'));
 
-        total = container.appendChild(document.createElement('span'));
-        total.id = 'basil-total';
-    });
+            total = container.appendChild(document.createElement('span'));
+            total.id = 'basil-total';
+        },
 
-    browserRunner.registerTestPlugin(function (runTest) {
-        runTest();
+        test: function (runTest) {
+            runTest();
 
-        passed.innerText = browserRunner.testCounts.passed;
-        failed.innerText = browserRunner.testCounts.failed;
-        total.innerText = browserRunner.testCounts.total;
+            passed.innerText = browserRunner.testCounts.passed;
+            failed.innerText = browserRunner.testCounts.failed;
+            total.innerText = browserRunner.testCounts.total;
 
-        document.title = "[" + browserRunner.testCounts.passed + '/' + browserRunner.testCounts.failed + '/' + browserRunner.testCounts.total + "] " + originalTitle;
+            document.title = "[" + browserRunner.testCounts.passed + '/' + browserRunner.testCounts.failed + '/' + browserRunner.testCounts.total + "] " + originalTitle;
+        }
     });
 })(basil);
 
 (function expandCollapsePlugin(browserRunner, localStorage) {
     localStorage = localStorage || {};
 
-    browserRunner.registerTestRenderPlugin(function (testElement, test) {
-        var expandCollapseIcon = document.createElement('i');
-        expandCollapseIcon.className = 'basil-test-icon basil-test-button';
-        testElement.appendChild(expandCollapseIcon);
+    browserRunner.registerPlugin({
+        testRender: function (testElement, test) {
+            var expandCollapseIcon = document.createElement('i');
+            expandCollapseIcon.className = 'basil-test-icon basil-test-button';
+            testElement.appendChild(expandCollapseIcon);
 
-        if (!test.children().length)
-            return;
+            if (!test.children().length)
+                return;
 
-        var key = 'basil-collapsed-' + test.fullKey();
-        applyCollapsedState();
-        expandCollapseIcon.addEventListener('click', toggleCollapsed);
-
-        function applyCollapsedState () {
-            var isCollapsed = !!localStorage[key];
-            removeClass(expandCollapseIcon, '(icon-caret-right|icon-caret-down)');
-            if (isCollapsed) {
-                addClass(expandCollapseIcon, 'icon-caret-right');
-                addClass(testElement, 'is-collapsed');
-            } else {
-                addClass(expandCollapseIcon, 'icon-caret-down');
-                removeClass(testElement, 'is-collapsed');
-            }
-        }
-
-        function addClass(el, className) {
-            if (!new RegExp('\\b' + className + '\\b').test(el.className))
-                el.className += ' ' + className;
-        }
-
-        function removeClass(el, className) {
-            el.className = el.className.replace(new RegExp('\\b' + className + '\\b'), '');
-        }
-
-        function toggleCollapsed () {
-            if (localStorage[key])
-                delete localStorage[key];
-            else
-                localStorage[key] = true;
+            var key = 'basil-collapsed-' + test.fullKey();
             applyCollapsedState();
+            expandCollapseIcon.addEventListener('click', toggleCollapsed);
+
+            function applyCollapsedState () {
+                var isCollapsed = !!localStorage[key];
+                removeClass(expandCollapseIcon, '(icon-caret-right|icon-caret-down)');
+                if (isCollapsed) {
+                    addClass(expandCollapseIcon, 'icon-caret-right');
+                    addClass(testElement, 'is-collapsed');
+                } else {
+                    addClass(expandCollapseIcon, 'icon-caret-down');
+                    removeClass(testElement, 'is-collapsed');
+                }
+            }
+
+            function addClass(el, className) {
+                if (!new RegExp('\\b' + className + '\\b').test(el.className))
+                    el.className += ' ' + className;
+            }
+
+            function removeClass(el, className) {
+                el.className = el.className.replace(new RegExp('\\b' + className + '\\b'), '');
+            }
+
+            function toggleCollapsed () {
+                if (localStorage[key])
+                    delete localStorage[key];
+                else
+                    localStorage[key] = true;
+                applyCollapsedState();
+            }
         }
     });
 })(basil, localStorage);
 
 (function passedFailedIconPlugin(browserRunner) {
-    browserRunner.registerTestRenderPlugin(function (testElement, test) {
-        var icon = document.createElement('i');
-        icon.className = 'basil-test-icon ' + (test.hasPassed() ? 'icon-ok' : 'icon-remove');
-        testElement.appendChild(icon);
+    browserRunner.registerPlugin({
+        testRender: function (testElement, test) {
+            var icon = document.createElement('i');
+            icon.className = 'basil-test-icon ' + (test.hasPassed() ? 'icon-ok' : 'icon-remove');
+            testElement.appendChild(icon);
+        }
     });
 })(basil);
 
 (function testNamePlugin(browserRunner) {
-    browserRunner.registerTestRenderPlugin(function (testElement, test) {
-        testElement.appendChild(document.createTextNode(test.name()));
+    browserRunner.registerPlugin({
+        testRender: function (testElement, test) {
+            testElement.appendChild(document.createTextNode(test.name()));
+        }
     });
 })(basil);
 
 (function errorTextPlugin(browserRunner) {
-    browserRunner.registerTestRenderPlugin(function (testElement, test) {
-        var error = test.error();
-        if (error)
-            testElement.appendChild(document.createTextNode(' (' + error + ')'));
+    browserRunner.registerPlugin({
+        testRender: function (testElement, test) {
+            var error = test.error();
+            if (error)
+                testElement.appendChild(document.createTextNode(' (' + error + ')'));
+        }
     });
 })(basil);
 
@@ -341,53 +339,55 @@
     var testDepth = 0;
     var filterForm, filterInput;
 
-    browserRunner.registerPagePlugin(function (header) {
-        filterForm = header.appendChild(document.createElement('form'));
-        filterForm.id = 'basil-settings';
-        filterForm.className = 'basil-header-section';
-        filterForm.action = location.href;
+    browserRunner.registerPlugin({
+        pageRender: function (header) {
+            filterForm = header.appendChild(document.createElement('form'));
+            filterForm.id = 'basil-settings';
+            filterForm.className = 'basil-header-section';
+            filterForm.action = location.href;
 
-        filterForm.appendChild(document.createTextNode('Filter'));
+            filterForm.appendChild(document.createTextNode('Filter'));
 
-        filterInput = filterForm.appendChild(document.createElement('input'));
-        filterInput.id = 'basil-filter';
-        filterInput.type = 'text';
-        filterInput.name = 'filter';
-        filterInput.value = filter;
-        filterInput.focus();
+            filterInput = filterForm.appendChild(document.createElement('input'));
+            filterInput.id = 'basil-filter';
+            filterInput.type = 'text';
+            filterInput.name = 'filter';
+            filterInput.value = filter;
+            filterInput.focus();
 
-        filterForm.addEventListener('submit', function() {
-            browserRunner.abort();
-        });
-    })
+            filterForm.addEventListener('submit', function() {
+                browserRunner.abort();
+            });
+        },
 
-    browserRunner.registerTestRenderPlugin(function (testElement, test) {
-        var filterElement = document.createElement('i');
-        filterElement.className = 'basil-test-icon basil-test-button icon-filter';
-        filterElement.addEventListener('click', function() {
-            browserRunner.abort();
-            filterInput.value = test.fullKey();
-            filterForm.submit();
-        });
+        testRender: function (testElement, test) {
+            var filterElement = document.createElement('i');
+            filterElement.className = 'basil-test-icon basil-test-button icon-filter';
+            filterElement.addEventListener('click', function() {
+                browserRunner.abort();
+                filterInput.value = test.fullKey();
+                filterForm.submit();
+            });
 
-        testElement.appendChild(filterElement);
-    });
+            testElement.appendChild(filterElement);
+        },
 
-    browserRunner.registerTestPlugin(function (runTest, test) {
-        var testKey = test.key();
+        test: function (runTest, test) {
+            var testKey = test.key();
 
-        var isPartialMatch = testKey.indexOf(filterParts[testDepth] || '') > -1;
-        var isExactMatch = testKey === filterParts[testDepth];
-        var testMatchesFilter = isExactMatch
-            || (isPartialMatch && testDepth == filterParts.length - 1)
-            || testDepth >= filterParts.length;
+            var isPartialMatch = testKey.indexOf(filterParts[testDepth] || '') > -1;
+            var isExactMatch = testKey === filterParts[testDepth];
+            var testMatchesFilter = isExactMatch
+                || (isPartialMatch && testDepth == filterParts.length - 1)
+                || testDepth >= filterParts.length;
 
-        if (!testMatchesFilter)
-            test.skip();
+            if (!testMatchesFilter)
+                test.skip();
 
-        testDepth++;
-        runTest();
-        testDepth--;
+            testDepth++;
+            runTest();
+            testDepth--;
+        }
     });
 
     function param(key) {
@@ -404,67 +404,79 @@
 })(basil, document.location);
 
 (function inspectPlugin(browserRunner) {
-    browserRunner.registerTestRenderPlugin(function (li, test) {
-        if (!test.inspect)
-            return;
+    browserRunner.registerPlugin({
+        testRender: function (li, test) {
+            if (!test.inspect)
+                return;
 
-        var inspectElement = document.createElement('i');
-        inspectElement.className = 'basil-test-icon basil-test-button icon-signin';
-        inspectElement.addEventListener('click', function() {
-            debugger;
-            test.inspect();
-        });
-        li.appendChild(inspectElement);
+            var inspectElement = document.createElement('i');
+            inspectElement.className = 'basil-test-icon basil-test-button icon-signin';
+            inspectElement.addEventListener('click', function() {
+                debugger;
+                test.inspect();
+            });
+            li.appendChild(inspectElement);
+        }
     });
 })(basil);
 
 (function viewCodePlugin(browserRunner) {
-    browserRunner.registerTestRenderPlugin(function (testElement, test) {
-        if (!test.inspect)
-            return;
+    browserRunner.registerPlugin({
+        testRender: function (testElement, test) {
+            if (!test.inspect)
+                return;
 
-        var codeIcon = document.createElement('i');
-        codeIcon.className = 'basil-test-icon basil-test-button icon-code';
-        testElement.appendChild(codeIcon);
+            var codeIcon = document.createElement('i');
+            codeIcon.className = 'basil-test-icon basil-test-button icon-code';
+            testElement.appendChild(codeIcon);
 
-        var code = document.createElement('code');
-        code.innerHTML = test.inspect.toString().split("\n").slice(1, -1).join("\n");
-        code.className = 'basil-code';
-        testElement.appendChild(code);
+            var code = document.createElement('code');
+            code.innerHTML = test.inspect.toString().split("\n").slice(1, -1).join("\n");
+            code.className = 'basil-code';
+            testElement.appendChild(code);
 
-        var isVisible = false;
-        codeIcon.addEventListener('click', function() {
-            isVisible = !isVisible;
-            code.className = isVisible
-                ? 'basil-code is-basil-code-visible'
-                : 'basil-code';
-        });
+            var isVisible = false;
+            codeIcon.addEventListener('click', function() {
+                isVisible = !isVisible;
+                code.className = isVisible
+                    ? 'basil-code is-basil-code-visible'
+                    : 'basil-code';
+            });
+        }
     });
 })(basil);
 
 (function hidePassedPlugin(browserRunner, localStorage) {
     localStorage = localStorage || {};
 
-    browserRunner.registerPagePlugin(function (header, results) {
-        var label = header.appendChild(document.createElement('label'));
-        label.className = 'basil-header-section';
+    browserRunner.registerPlugin({
+        pageRender: function (header, results) {
+            var label = header.appendChild(document.createElement('label'));
+            label.className = 'basil-header-section';
 
-        var checkbox = label.appendChild(document.createElement('input'));
-        checkbox.type = 'checkbox';
-        checkbox.checked = localStorage.isHidePassedChecked == 'true';
+            var checkbox = label.appendChild(document.createElement('input'));
+            checkbox.type = 'checkbox';
+            checkbox.checked = localStorage.isHidePassedChecked == 'true';
 
-        label.appendChild(document.createTextNode('Hide Passed'));
+            label.appendChild(document.createTextNode('Hide Passed'));
 
-        updateHidePassedState();
+            updateHidePassedState();
 
-        checkbox.addEventListener('change', updateHidePassedState);
+            checkbox.addEventListener('change', updateHidePassedState);
 
-        function updateHidePassedState () {
-            localStorage.isHidePassedChecked = checkbox.checked;
-            if (checkbox.checked)
-                results.setAttribute('class', 'is-hiding-passed');
-            else
-                results.removeAttribute('class');
+            function updateHidePassedState () {
+                localStorage.isHidePassedChecked = checkbox.checked;
+                if (checkbox.checked)
+                    results.setAttribute('class', 'is-hiding-passed');
+                else
+                    results.removeAttribute('class');
+            }
+        },
+
+        testRender: function (testElement, test) {
+            testElement.className += test.hasPassed()
+                ? ' is-passed'
+                : ' is-failed';
         }
     });
 })(basil, localStorage);
