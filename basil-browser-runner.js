@@ -28,7 +28,6 @@
         _renderPage: function () {
             var header = document.body.appendChild(document.createElement('div'));
             header.id = 'basil-header';
-            header.className = 'is-running';
 
             var results = document.body.appendChild(document.createElement('div'));
             results.id = 'basil-results';
@@ -73,14 +72,6 @@
         if (test.isComplete()){
             var resultsElement = document.getElementById('basil-results');
             appendResults(resultsElement, [test]);
-
-            if (!test.hasPassed()) {
-                var header = document.getElementById('basil-header');
-                if (header.classList)
-                    header.classList.add('is-failed');
-                else
-                    header.className = 'is-failed';
-            }
         }
 
         return test;
@@ -122,25 +113,6 @@
 
         cssClass += test.children().length ? ' basil-parent' : ' basil-leaf';
         return cssClass;
-    }
-
-    testRunner.registerSetupPlugin(setRunning);
-    testRunner.onComplete(setNotRunning);
-
-    function setRunning(runTest) {
-        runTest();
-
-        var header = document.getElementById('basil-header');
-
-        if (header.classList)
-            header.classList.add('is-running');
-    }
-
-    function setNotRunning() {
-        var header = document.getElementById('basil-header');
-
-        if (header.classList)
-            header.classList.remove('is-running');
     }
 })(this);
 
@@ -203,6 +175,20 @@
     });
 })(basil);
 
+(function headerStatePlugin(testRunner) {
+    var headerElement;
+
+    testRunner.registerPagePlugin(function (header) {
+        headerElement = header;
+        header.className += ' is-running';
+    });
+
+    testRunner.onComplete(function () {
+        var stateClass = testRunner.testCounts.failed ? 'is-failed' : 'is-passed';
+        headerElement.className = headerElement.className.replace('is-running', stateClass);
+    });
+})(basil);
+
 (function titlePlugin(browserRunner, location) {
     var title = document.title || 'Basil';
 
@@ -259,10 +245,10 @@
     }
 
     function forceRender() {
-        if (Date.now() - lastRenderTime < 250)
-            return;
-        document.body.clientWidth;
-        lastRenderTime = Date.now();
+        if (Date.now() - lastRenderTime >= 250) {
+            document.body.clientWidth;
+            lastRenderTime = Date.now();
+        }
     }
 })(basil);
 
