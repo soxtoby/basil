@@ -51,7 +51,6 @@
                 + '<span id="basil-fails"></span>/'
                 + '<span id="basil-total"></span>'
             + '</div>'
-            + '<a id="basil-title"></a>'
         + '</div>'
         + '<div id="basil-results"></div>';
 
@@ -125,19 +124,10 @@
             plugin(header, results);
         });
 
-        setTitle();
-
         function createBaseStructure () {
             var body = document.body;
             createDom(baseTemplate)
                 .forEach(body.appendChild.bind(body));
-        }
-
-        function setTitle () {
-            var pageTitle = document.getElementsByTagName('title');
-            var titleText = pageTitle.length ? pageTitle[0].innerText : 'Basil';
-            document.getElementById('basil-title').innerText = titleText;
-            document.getElementById('basil-title').href = document.location.href.replace(document.location.search, '');
         }
     }
 
@@ -277,6 +267,16 @@
         setTimeout(waitForBody, 10);
 })();
 
+(function titlePlugin(browserRunner, location) {
+    var title = document.title || 'Basil';
+
+    browserRunner.registerPagePlugin(function (header, results) {
+        var titleElement = header.appendChild(document.createElement('a'));
+        titleElement.href = location.href.replace(location.search, '');
+        titleElement.innerText = title;
+        titleElement.id = 'basil-title';
+    });
+})(basil, document.location);
 
 (function expandCollapsePlugin(browserRunner, localStorage) {
     localStorage = localStorage || {};
