@@ -66,6 +66,9 @@
                     then(function () { expect(result2.isComplete()).to.be.true; });
                     then(function () { expect(result2.runCount()).to.equal(1); });
                     then(function () { expect(testFunction2).to.not.have.been.calledOn(testFunction.firstCall.thisValue); });
+                    then("tests() contains both tests", function () {
+                        expect(sut.tests()).to.have.members([result, result2]);
+                    });
                 });
             });
 
@@ -84,6 +87,10 @@
 
                 then("inner function uses same 'this' value as outer", function () {
                     expect(innerTestFunction).to.have.been.calledOn(testFunction.firstCall.thisValue);
+                });
+
+                then("tests() contains just the root test", function () {
+                    expect(sut.tests()).to.have.members([result]);
                 });
             });
 
@@ -278,13 +285,16 @@
     });
 
     describe("Test", function () {
-        var sut = new Basil.Test("test name");
+        var sut = new Basil.Test("Test Name");
 
-        then(function () {expect(sut.name()).to.equal("test name");});
+        then(function () {expect(sut.name()).to.equal("Test Name");});
         then(function () {expect(sut.isComplete()).to.be.false;});
         then(function () {expect(sut.runCount()).to.equal(0);});
         then(function () {expect(sut.hasPassed()).to.be.false;});
+        then(function () {expect(sut.wasSkipped()).to.be.false;});
         then(function () {expect(sut.error()).to.be.null;});
+        then(function () {expect(sut.key()).to.equal('test name');});
+        then(function () {expect(sut.fullKey()).to.equal('test name');});
 
         when("it finishes running", function () {
             var functionToRun = sinon.stub();
@@ -389,6 +399,8 @@
 
             then(function () {expect(child.name()).to.equal("1st Child");});
             then(function () {expect(sut.children()).to.deep.equal([child]);});
+            then(function () {expect(child.key()).to.equal('1st child');});
+            then(function () {expect(child.fullKey()).to.equal('test name>1st child');});
 
             when("retrieving a child with the same name", function () {
                 var retrievedChild = sut.child("1st Child");
