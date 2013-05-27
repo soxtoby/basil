@@ -1,6 +1,4 @@
 (function () {
-    "use strict";
-
     describe("TestRunner", function () {
         var sut = new Basil.TestRunner();
 

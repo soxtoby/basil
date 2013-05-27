@@ -1,6 +1,4 @@
 describe("Browser Runner", function () {
-    "use strict";
-
     var browserRunner = new Basil.BrowserRunner();
 
     describe("DOM fixture plugin", function () {
