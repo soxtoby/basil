@@ -22,11 +22,13 @@
         },
 
         _renderPage: function () {
-            var header = document.body.appendChild(document.createElement('div'));
-            header.id = 'basil-header';
+            var header = appendElement(document.body, 'div', {
+                id: 'basil-header'
+            });
 
-            var results = this._resultsElement = document.body.appendChild(document.createElement('div'));
-            results.id = 'basil-results';
+            var results = this._resultsElement = appendElement(document.body, 'div', {
+                id: 'basil-results'
+            });
 
             this.runPluginChain('pageRender', this, [header, results]);
         },
@@ -82,11 +84,10 @@
                         if (domElement != null)
                             return domElement;
 
-                        domElement = document.createElement('div');
-                        domElement.id = 'basil-temporary-dom-element';
-                        domElement.className = 'basil-temporary-dom-element';
-                        document.body.appendChild(domElement);
-                        return domElement;
+                        return domElement = appendElement(document.body, 'div', {
+                            id: 'basil-temporary-dom-element',
+                            className: 'basil-temporary-dom-element'
+                        });
                     }
                 });
 
@@ -148,11 +149,12 @@
     Basil.bigTitlePlugin = function (location) {
         return {
             pageRender: function (header) {
-                var titleElement = header.appendChild(document.createElement('a'));
-                titleElement.href = location.href.replace(location.search, '');
-                titleElement.innerText = document.title || 'Basil';
-                titleElement.id = 'basil-title';
-                titleElement.className = 'basil-header-section';
+                appendElement(header, 'a', {
+                    id: 'basil-title',
+                    className: 'basil-header-section',
+                    href: location.href.replace(location.search, ''),
+                    innerText: document.title || 'Basil'
+                });
             }
         };
     };
@@ -191,11 +193,11 @@
         function setFavIconElement(url) {
             var favIcon = document.getElementById('favIcon');
             if (!favIcon) {
-                favIcon = document.createElement('link');
-                favIcon.id = 'favIcon';
-                favIcon.rel = 'shortcut icon';
-                favIcon.type = 'image/x-icon';
-                document.head.appendChild(favIcon);
+                favIcon = appendElement(document.head, 'link', {
+                    id: 'favIcon',
+                    rel: 'shortcut icon',
+                    type: 'image/x-icon'
+                });
             }
             favIcon.href = url;
 
@@ -216,21 +218,12 @@
 
         return {
             pageRender: function (header) {
-                var container = header.appendChild(document.createElement('div'));
-                container.id = 'basil-summary';
-
-                passed = container.appendChild(document.createElement('span'));
-                passed.className = 'basil-passes';
-
-                container.appendChild(document.createTextNode('/'));
-
-                failed = container.appendChild(document.createElement('span'));
-                failed.className = 'basil-fails';
-
-                container.appendChild(document.createTextNode('/'));
-
-                total = container.appendChild(document.createElement('span'));
-                total.className = 'basil-total';
+                var container = appendElement(header, 'div', { id: 'basil-summary' });
+                passed = appendElement(container, 'span', { className: 'basil-passes' });
+                appendText(container, '/');
+                failed = appendElement(container, 'span', { className: 'basil-fails' });
+                appendText(container, '/');
+                total = appendElement(container, 'span', { className: 'basil-total' });
             },
 
             setup: function (runTest) {
@@ -250,9 +243,9 @@
 
         return {
             testRender: function (testElement, test) {
-                var expandCollapseIcon = document.createElement('i');
-                expandCollapseIcon.className = 'basil-test-icon basil-test-button';
-                testElement.appendChild(expandCollapseIcon);
+                var expandCollapseIcon = appendElement(testElement, 'i', {
+                    className: 'basil-test-icon basil-test-button'
+                });
 
                 if (!test.children().length)
                     return;
@@ -287,9 +280,10 @@
     Basil.passedFailedIconPlugin = function () {
         return {
             testRender: function (testElement, test) {
-                var icon = document.createElement('i');
-                icon.className = 'basil-test-icon ' + (test.hasPassed() ? 'icon-ok' : 'icon-remove');
-                testElement.appendChild(icon);
+                appendElement(testElement, 'i', {
+                    className: 'basil-test-icon '
+                        + (test.hasPassed() ? 'icon-ok' : 'icon-remove')
+                });
             }
         };
     };
@@ -297,7 +291,7 @@
     Basil.testNamePlugin = function () {
         return {
             testRender: function (testElement, test) {
-                testElement.appendChild(document.createTextNode(test.name()));
+                appendText(testElement, test.name());
             }
         };
     };
@@ -307,7 +301,7 @@
             testRender: function (testElement, test) {
                 var error = test.error();
                 if (error)
-                    testElement.appendChild(document.createTextNode(' (' + error + ')'));
+                    appendText(testElement, ' (' + error + ')');
             }
         };
     };
@@ -324,18 +318,20 @@
 
         return {
             pageRender: function (header) {
-                filterForm = header.appendChild(document.createElement('form'));
-                filterForm.id = 'basil-settings';
-                filterForm.className = 'basil-header-section';
-                filterForm.action = location.href;
+                filterForm = appendElement(header, 'form', {
+                    id: 'basil-settings',
+                    className: 'basil-header-section',
+                    action: location.href
+                });
 
-                filterForm.appendChild(document.createTextNode('Filter'));
+                appendText(filterForm, 'Filter');
 
-                filterInput = filterForm.appendChild(document.createElement('input'));
-                filterInput.id = 'basil-filter';
-                filterInput.type = 'search';
-                filterInput.name = 'filter';
-                filterInput.value = filter;
+                filterInput = appendElement(filterForm, 'input', {
+                    id: 'basil-filter',
+                    type: 'search',
+                    name: 'filter',
+                    value: filter
+                });
                 filterInput.focus();
 
                 filterForm.addEventListener('submit', function () {
@@ -348,14 +344,13 @@
             },
 
             testRender: function (testElement, test) {
-                var filterElement = document.createElement('i');
-                filterElement.className = 'basil-test-icon basil-test-button icon-filter';
+                var filterElement = appendElement(testElement, 'i', {
+                    className: 'basil-test-icon basil-test-button icon-filter'
+                });
                 filterElement.addEventListener('click', function () {
                     filterInput.value = test.fullKey();
                     filterForm.submit();
                 });
-
-                testElement.appendChild(filterElement);
             },
 
             test: function (runTest, test) {
@@ -391,17 +386,17 @@
 
     Basil.inspectPlugin = function () {
         return {
-            testRender: function (li, test) {
+            testRender: function (testElement, test) {
                 if (!test.inspect)
                     return;
 
-                var inspectElement = document.createElement('i');
-                inspectElement.className = 'basil-test-icon basil-test-button icon-signin';
+                var inspectElement = appendElement(testElement, 'i', {
+                    className: 'basil-test-icon basil-test-button icon-signin'
+                });
                 inspectElement.addEventListener('click', function () {
                     debugger;
                     test.inspect.call(test.inspectThisValue);
                 });
-                li.appendChild(inspectElement);
             }
         };
     };
@@ -412,14 +407,14 @@
                 if (!test.inspect)
                     return;
 
-                var codeIcon = document.createElement('i');
-                codeIcon.className = 'basil-test-icon basil-test-button icon-code';
-                testElement.appendChild(codeIcon);
+                var codeIcon = appendElement(testElement, 'i', {
+                    className: 'basil-test-icon basil-test-button icon-code'
+                });
 
-                var code = document.createElement('code');
-                code.innerHTML = test.inspect.toString().split("\n").slice(1, -1).join("\n");
-                code.className = 'basil-code';
-                testElement.appendChild(code);
+                var code = appendElement(testElement, 'code', {
+                    innerHTML: test.inspect.toString().split("\n").slice(1, -1).join("\n"),
+                    className: 'basil-code'
+                });
 
                 var isVisible = false;
                 codeIcon.addEventListener('click', function () {
@@ -437,14 +432,16 @@
 
         return {
             pageRender: function (header, results) {
-                var label = header.appendChild(document.createElement('label'));
-                label.className = 'basil-header-section';
+                var label = appendElement(header, 'label', {
+                    className: 'basil-header-section'
+                });
 
-                var checkbox = label.appendChild(document.createElement('input'));
-                checkbox.type = 'checkbox';
-                checkbox.checked = localStorage.isHidePassedChecked == 'true';
+                var checkbox = appendElement(label, 'input', {
+                    type: 'checkbox',
+                    checked: localStorage.isHidePassedChecked == 'true'
+                });
 
-                label.appendChild(document.createTextNode('Hide Passed'));
+                appendText(label, 'Hide Passed');
 
                 updateHidePassedState();
 
@@ -467,6 +464,18 @@
             }
         };
     };
+
+    function appendElement(el, tagName, properties) {
+        var newElement = el.appendChild(document.createElement(tagName));
+        Object.keys(properties).forEach(function (key) {
+            newElement[key] = properties[key];
+        });
+        return newElement;
+    }
+
+    function appendText(el, text) {
+        el.appendChild(document.createTextNode(text));
+    }
 
     function addClass(el, className) {
         if (!new RegExp('\\b' + className + '\\b').test(el.className))
