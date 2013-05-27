@@ -181,7 +181,7 @@
         },
 
         wasSkipped: function() {
-            return this._skipped;
+            return !!this._skipped;
         },
 
         runCount: function() {

@@ -1,7 +1,9 @@
-﻿(function(global) {
+﻿(function (global) {
+    "use strict";
+
     function extend(constructor, subPrototype) {
         var prototype = Object.create(constructor.prototype);
-        Object.keys(subPrototype).forEach(function(key) {
+        Object.keys(subPrototype).forEach(function (key) {
             prototype[key] = subPrototype[key];
         });
 
@@ -40,13 +42,13 @@
         },
 
         _appendResults: function (el, tests) {
-            tests = tests.filter(function(t) { return !t.wasSkipped(); });
+            tests = tests.filter(function (t) { return !t.wasSkipped(); });
 
             if (!tests.length)
                 return;
 
             var ul = document.createElement('ul');
-            tests.forEach(function(test, i) {
+            tests.forEach(function (test, i) {
                 var li = this._createTestElement(test);
                 this._appendResults(li, test.children());
                 ul.appendChild(li);
@@ -76,7 +78,7 @@
                 var domElement = null;
 
                 Object.defineProperty(this, 'dom', {
-                    get: function() {
+                    get: function () {
                         if (domElement != null)
                             return domElement;
 
@@ -185,7 +187,7 @@
             }
         };
 
-        function setFavIconElement (url) {
+        function setFavIconElement(url) {
             var favIcon = document.getElementById('favIcon');
             if (!favIcon) {
                 favIcon = document.createElement('link');
@@ -258,7 +260,7 @@
                 applyCollapsedState();
                 expandCollapseIcon.addEventListener('click', toggleCollapsed);
 
-                function applyCollapsedState () {
+                function applyCollapsedState() {
                     var isCollapsed = !!localStorage[key];
                     removeClass(expandCollapseIcon, '(icon-caret-right|icon-caret-down)');
                     if (isCollapsed) {
@@ -270,16 +272,7 @@
                     }
                 }
 
-                function addClass(el, className) {
-                    if (!new RegExp('\\b' + className + '\\b').test(el.className))
-                        el.className += ' ' + className;
-                }
-
-                function removeClass(el, className) {
-                    el.className = el.className.replace(new RegExp('\\b' + className + '\\b'), '');
-                }
-
-                function toggleCollapsed () {
+                function toggleCollapsed() {
                     if (localStorage[key])
                         delete localStorage[key];
                     else
@@ -324,7 +317,7 @@
             .toLowerCase()
             .split('>')
             .filter(Boolean)
-            .map(function(filterPart) { return filterPart.trim(); });
+            .map(function (filterPart) { return filterPart.trim(); });
         var testDepth = 0;
         var filterForm, filterInput;
 
@@ -339,21 +332,24 @@
 
                 filterInput = filterForm.appendChild(document.createElement('input'));
                 filterInput.id = 'basil-filter';
-                filterInput.type = 'text';
+                filterInput.type = 'search';
                 filterInput.name = 'filter';
                 filterInput.value = filter;
                 filterInput.focus();
 
-                filterForm.addEventListener('submit', function() {
+                filterForm.addEventListener('submit', function () {
                     browserRunner.abort();
+                });
+
+                filterForm.addEventListener('search', function () {
+                    filterForm.submit();
                 });
             },
 
             testRender: function (testElement, test) {
                 var filterElement = document.createElement('i');
                 filterElement.className = 'basil-test-icon basil-test-button icon-filter';
-                filterElement.addEventListener('click', function() {
-                    browserRunner.abort();
+                filterElement.addEventListener('click', function () {
                     filterInput.value = test.fullKey();
                     filterForm.submit();
                 });
@@ -400,9 +396,9 @@
 
                 var inspectElement = document.createElement('i');
                 inspectElement.className = 'basil-test-icon basil-test-button icon-signin';
-                inspectElement.addEventListener('click', function() {
+                inspectElement.addEventListener('click', function () {
                     debugger;
-                    test.inspect();
+                    test.inspect.call(test.inspectThisValue);
                 });
                 li.appendChild(inspectElement);
             }
@@ -425,7 +421,7 @@
                 testElement.appendChild(code);
 
                 var isVisible = false;
-                codeIcon.addEventListener('click', function() {
+                codeIcon.addEventListener('click', function () {
                     isVisible = !isVisible;
                     code.className = isVisible
                         ? 'basil-code is-basil-code-visible'
@@ -453,12 +449,12 @@
 
                 checkbox.addEventListener('change', updateHidePassedState);
 
-                function updateHidePassedState () {
-                    localStorage.isHidePassedChecked = checkbox.checked;
+                function updateHidePassedState() {
+                    localStorage.isHidePassedChecked = checkbox.checked + '';
                     if (checkbox.checked)
-                        results.setAttribute('class', 'is-hiding-passed');
+                        addClass(results, 'is-hiding-passed');
                     else
-                        results.removeAttribute('class');
+                        removeClass(results, 'is-hiding-passed');
                 }
             },
 
@@ -469,6 +465,15 @@
             }
         };
     };
+
+    function addClass(el, className) {
+        if (!new RegExp('\\b' + className + '\\b').test(el.className))
+            el.className += ' ' + className;
+    }
+
+    function removeClass(el, className) {
+        el.className = el.className.replace(new RegExp('\\b' + className + '\\b'), '');
+    }
 })(this);
 
 basil = new Basil.BrowserRunner();
@@ -491,7 +496,7 @@ basil.registerPlugin(
 
 test = describe = when = then = it = basil.test;
 
-(function waitForBody () {
+(function waitForBody() {
     if (document.body)
         basil.start();
     else
