@@ -30,7 +30,7 @@
                 id: 'basil-results'
             });
 
-            this.runPluginChain('pageRender', this, [header, results]);
+            this.runPluginQueue('pageRender', this, [header, results]);
         },
 
         _onRootTestRun: function (runTest, test) {
@@ -62,13 +62,13 @@
         _createTestElement: function (test) {
             var li = document.createElement('li');
 
-            this.runPluginChain('testRender', this, [li, test]);
+            this.runPluginQueue('testRender', this, [li, test]);
 
             return li;
         },
 
         _complete: function () {
-            this.runPluginChain('onComplete');
+            this.runPluginQueue('onComplete');
         }
     });
 

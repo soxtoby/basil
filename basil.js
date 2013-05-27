@@ -98,7 +98,7 @@
             }
         },
 
-        runPluginChain: function (pluginMethod, context, args) {
+        runPluginQueue: function (pluginMethod, context, args) {
             this._plugins.forEach(function (plugin) {
                 if (pluginMethod in plugin)
                     plugin[pluginMethod].apply(context, args);
