@@ -134,17 +134,18 @@
         return {
             pageRender: function (header) {
                 headerElement = header;
-                header.className += ' is-running';
+                addClass(header, 'is-running');
             },
 
             onComplete: function () {
                 var stateClass = testRunner.testCounts.failed ? 'is-failed' : '';
-                headerElement.className = headerElement.className.replace('is-running', stateClass);
+                removeClass(headerElement, 'is-running');
+                addClass(headerElement, stateClass);
             }
         };
     };
 
-    Basil.bigTitlePlugin = function (browserRunner, location) {
+    Basil.bigTitlePlugin = function (location) {
         return {
             pageRender: function (header) {
                 var titleElement = header.appendChild(document.createElement('a'));
@@ -244,7 +245,7 @@
         };
     };
 
-    Basil.expandCollapsePlugin = function (browserRunner, localStorage) {
+    Basil.expandCollapsePlugin = function (localStorage) {
         localStorage = localStorage || {};
 
         return {
@@ -431,7 +432,7 @@
         };
     };
 
-    Basil.hidePassedPlugin = function (browserRunner, localStorage) {
+    Basil.hidePassedPlugin = function (localStorage) {
         localStorage = localStorage || {};
 
         return {
@@ -459,9 +460,10 @@
             },
 
             testRender: function (testElement, test) {
-                testElement.className += test.hasPassed()
-                    ? ' is-passed'
-                    : ' is-failed';
+                addClass(testElement,
+                    test.hasPassed()
+                        ? ' is-passed'
+                        : ' is-failed');
             }
         };
     };
@@ -481,17 +483,17 @@ basil.registerPlugin(
     Basil.domFixturePlugin(),
     Basil.testCountPlugin(basil),
     Basil.headerStatePlugin(basil),
-    Basil.bigTitlePlugin(basil, location),
+    Basil.bigTitlePlugin(location),
     Basil.favIconPlugin(),
     Basil.displayTestCountPlugin(basil),
-    Basil.expandCollapsePlugin(basil, localStorage),
+    Basil.expandCollapsePlugin(localStorage),
     Basil.passedFailedIconPlugin(),
     Basil.testNamePlugin(),
     Basil.errorTextPlugin(),
     Basil.filterPlugin(basil, location),
     Basil.inspectPlugin(),
     Basil.viewCodePlugin(),
-    Basil.hidePassedPlugin(basil, localStorage)
+    Basil.hidePassedPlugin(localStorage)
 );
 
 test = describe = when = then = it = basil.test;

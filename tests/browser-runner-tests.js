@@ -138,7 +138,7 @@ describe("Browser Runner", function () {
 
     describe("Big title plugin", function () {
         var location = { href: 'foo?bar', search: '?bar' };
-        var sut = Basil.bigTitlePlugin(browserRunner, location);
+        var sut = Basil.bigTitlePlugin(location);
 
         when("document has a title set", function () {
             document.title = 'baz';
@@ -215,7 +215,7 @@ describe("Browser Runner", function () {
     });
 
     describe("Expand/collapse plugin", function () {
-        var sut = Basil.expandCollapsePlugin(browserRunner);
+        var sut = Basil.expandCollapsePlugin();
         var test = new Basil.Test('foo');
 
         when("test has no children", function () {
@@ -574,77 +574,108 @@ describe("Browser Runner", function () {
     });
 
     describe("Hide passed plugin", function () {
-        var localStorage = { };
-        var header = document.createElement('div');
-        var results = document.createElement('div');
+        test("Page rendering", function () {
+            var localStorage = { };
+            var header = document.createElement('div');
+            var results = document.createElement('div');
 
-        when("passed tests not hidden in localStorage", function () {
-            localStorage.isHidePassedChecked = 'false';
-            var sut = Basil.hidePassedPlugin(browserRunner, localStorage);
+            when("passed tests not hidden in localStorage", function () {
+                localStorage.isHidePassedChecked = 'false';
+                var sut = Basil.hidePassedPlugin(localStorage);
 
-            when("page is rendered", function () {
-                sut.pageRender(header, results);
+                when("page is rendered", function () {
+                    sut.pageRender(header, results);
 
-                var label = header.children[0];
-                var checkbox = label.children[0];
+                    var label = header.children[0];
+                    var checkbox = label.children[0];
 
-                then("labelled checkbox is added to header", function () {
-                    expect(label.tagName.toUpperCase()).to.equal('LABEL');
-                    expect(label.innerText).to.equal('Hide Passed');
-                    expect(checkbox).to.be.an.instanceOf(HTMLInputElement);
-                    expect(checkbox.type).to.equal('checkbox');
+                    then("labelled checkbox is added to header", function () {
+                        expect(label.tagName.toUpperCase()).to.equal('LABEL');
+                        expect(label.innerText).to.equal('Hide Passed');
+                        expect(checkbox).to.be.an.instanceOf(HTMLInputElement);
+                        expect(checkbox.type).to.equal('checkbox');
+                    });
+
+                    then("checkbox is not checked", function () {
+                        expect(checkbox.checked).to.be.false;
+                    });
+
+                    then("passed tests are shown", function () {
+                        expect(results.className).to.not.contain('is-hiding-passed');
+                    });
+
+                    when("checkbox is changed", function () {
+                        checkbox.checked = true;
+                        checkbox.dispatchEvent(new Event('change'));
+
+                        then("localStorage is updated", function () {
+                            expect(localStorage.isHidePassedChecked).to.be.equal('true');
+                        });
+
+                        then("passed tests are hidden", function () {
+                            expect(results.className).to.contain('is-hiding-passed');
+                        });
+                    });
                 });
+            });
 
-                then("checkbox is not checked", function () {
-                    expect(checkbox.checked).to.be.false;
-                });
+            when("passed tests are hidden in localStorage", function () {
+                localStorage.isHidePassedChecked = 'true';
+                var sut = Basil.hidePassedPlugin(localStorage);
 
-                then("passed tests are shown", function () {
-                    expect(results.className).to.not.contain('is-hiding-passed');
-                });
+                when("page is rendered", function () {
+                    sut.pageRender(header, results);
 
-                when("checkbox is changed", function () {
-                    checkbox.checked = true;
-                    checkbox.dispatchEvent(new Event('change'));
+                    var checkbox = header.children[0].children[0];
 
-                    then("localStorage is updated", function () {
-                        expect(localStorage.isHidePassedChecked).to.be.equal('true');
+                    then("hide passed checkbox is checked", function () {
+                        expect(checkbox.checked).to.be.true;
                     });
 
                     then("passed tests are hidden", function () {
                         expect(results.className).to.contain('is-hiding-passed');
                     });
+
+                    when("checkbox is changed", function () {
+                        checkbox.checked = false;
+                        checkbox.dispatchEvent(new Event('change'));
+
+                        then("localStorage is updated", function () {
+                            expect(localStorage.isHidePassedChecked).to.be.equal('false');
+                        });
+
+                        then("passed tests are shown", function () {
+                            expect(results.className).to.not.contain('is-hiding-passed');
+                        });
+                    });
                 });
             });
         });
 
-        when("passed tests are hidden in localStorage", function () {
-            localStorage.isHidePassedChecked = 'true';
-            var sut = Basil.hidePassedPlugin(browserRunner, localStorage);
+        test("Test rendering", function () {
+            var test = new Basil.Test();
+            var sut = Basil.hidePassedPlugin();
 
-            when("page is rendered", function () {
-                sut.pageRender(header, results);
+            when("test has passed", function () {
+                test.hasPassed = function () { return true; };
 
-                var checkbox = header.children[0].children[0];
+                when("test is rendered", function () {
+                    sut.testRender(this.dom, test);
 
-                then("hide passed checkbox is checked", function () {
-                    expect(checkbox.checked).to.be.true;
-                });
-
-                then("passed tests are hidden", function () {
-                    expect(results.className).to.contain('is-hiding-passed');
-                });
-
-                when("checkbox is changed", function () {
-                    checkbox.checked = false;
-                    checkbox.dispatchEvent(new Event('change'));
-
-                    then("localStorage is updated", function () {
-                        expect(localStorage.isHidePassedChecked).to.be.equal('false');
+                    then("test element marked as passed", function () {
+                        expect(this.dom.className).to.contain('is-passed');
                     });
+                });
+            });
 
-                    then("passed tests are shown", function () {
-                        expect(results.className).to.not.contain('is-hiding-passed');
+            when("test has failed", function () {
+                test.hasPassed = function () { return false; };
+
+                when("test is rendered", function () {
+                    sut.testRender(this.dom, test);
+
+                    then("test element marked as failed", function () {
+                        expect(this.dom.className).to.contain('is-failed');
                     });
                 });
             });
