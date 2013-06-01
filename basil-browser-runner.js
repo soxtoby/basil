@@ -50,6 +50,7 @@
                 return;
 
             var ul = document.createElement('ul');
+            ul.className = 'basil-test-group';
             tests.forEach(function (test, i) {
                 var li = this._createTestElement(test);
                 this._appendResults(li, test.children());
@@ -61,6 +62,7 @@
 
         _createTestElement: function (test) {
             var li = document.createElement('li');
+            li.className = 'basil-test';
 
             this.runPluginQueue('testRender', this, [li, test]);
 
@@ -151,7 +153,6 @@
             pageRender: function (header) {
                 appendElement(header, 'a', {
                     id: 'basil-title',
-                    className: 'basil-header-section',
                     href: location.href.replace(location.search, ''),
                     innerText: document.title || 'Basil'
                 });
@@ -240,48 +241,101 @@
 
     Basil.expandCollapsePlugin = function (localStorage) {
         localStorage = localStorage || {};
+        var collapseKeyPrefix = 'basil-collapsed-';
+        var updateAllTests = [];
 
         return {
+            pageRender: function (header, results) {
+                var container = appendElement(header, 'span', { className: 'basil-expand-collapse-all' });
+
+                var expandAll = appendElement(container, 'label', { className: 'basil-expand-all basil-header-section' });
+                appendElement(expandAll, 'button', { className: 'basil-icon icon-plus-sign-alt' });
+                appendText(expandAll, 'Expand all');
+                expandAll.addEventListener('click', function () { setCollapseAllState(false); });
+
+                var collapseAll = appendElement(container, 'label', { className: 'basil-collapse-all basil-header-section' });
+                appendElement(collapseAll, 'button', { className: 'basil-icon icon-minus-sign-alt' });
+                appendText(collapseAll, 'Collapse all');
+                collapseAll.addEventListener('click', function () { setCollapseAllState(true); });
+
+                applyCollapseAllState();
+
+                function setCollapseAllState(collapseAll) {
+                    localStorage.collapseAllTests = collapseAll + '';
+                    applyCollapseAllState();
+
+                    Object.keys(localStorage).forEach(function (key) {
+                        if (key.indexOf(collapseKeyPrefix) == 0)
+                            delete localStorage[key];
+                    });
+                    updateAllTests.forEach(function (update) { update(); });
+                }
+
+                function applyCollapseAllState() {
+                    removeClass(results, '(is-collapsed-by-default|is-expanded-by-default)');
+                    addClass(results, areAllTestsCollapsed() ? 'is-collapsed-by-default' : 'is-expanded-by-default');
+                }
+            },
+
             testRender: function (testElement, test) {
-                var expandCollapseIcon = appendElement(testElement, 'i', {
-                    className: 'basil-test-icon basil-test-button'
+                var expandCollapseIcon = prependElement(testElement, 'i', {
+                    className: 'basil-icon basil-button basil-expand-collapse-icon'
                 });
 
                 if (!test.children().length)
                     return;
 
-                var key = 'basil-collapsed-' + test.fullKey();
-                applyCollapsedState();
-                expandCollapseIcon.addEventListener('click', toggleCollapsed);
+                var key = collapseKey(test);
 
-                function applyCollapsedState() {
-                    var isCollapsed = !!localStorage[key];
-                    removeClass(expandCollapseIcon, '(icon-caret-right|icon-caret-down)');
-                    if (isCollapsed) {
-                        addClass(expandCollapseIcon, 'icon-caret-right');
-                        addClass(testElement, 'is-collapsed');
-                    } else {
-                        addClass(expandCollapseIcon, 'icon-caret-down');
-                        removeClass(testElement, 'is-collapsed');
-                    }
-                }
+                applyCollapsedState(testElement, test);
+                expandCollapseIcon.addEventListener('click', toggleCollapsed);
+                updateAllTests.push(applyCollapsedState.bind(this, testElement, test));
 
                 function toggleCollapsed() {
-                    if (localStorage[key])
+                    if (key in localStorage)
                         delete localStorage[key];
                     else
-                        localStorage[key] = true;
-                    applyCollapsedState();
+                        localStorage[key] = !areAllTestsCollapsed() + '';
+                    applyCollapsedState(testElement, test);
                 }
             }
         };
+
+        function applyCollapsedState(testElement, test) {
+            var key = collapseKey(test);
+            var isCollapsed = key in localStorage
+                ? localStorage[key] == 'true'
+                : areAllTestsCollapsed();
+
+            var expandCollapseIcon = testElement.querySelector('.basil-expand-collapse-icon');
+            removeClass(expandCollapseIcon, '(icon-caret-right|icon-caret-down)');
+            removeClass(testElement, '(is-collapsed|is-expanded)');
+
+            if (isCollapsed) {
+                addClass(expandCollapseIcon, 'icon-caret-right');
+                if (!areAllTestsCollapsed())
+                    addClass(testElement, 'is-collapsed');
+            } else {
+                addClass(expandCollapseIcon, 'icon-caret-down');
+                if (areAllTestsCollapsed())
+                    addClass(testElement, 'is-expanded');
+            }
+        }
+
+        function collapseKey(test) {
+            return collapseKeyPrefix + test.fullKey();
+        }
+
+        function areAllTestsCollapsed() {
+            return localStorage.collapseAllTests == 'true';
+        }
     };
 
     Basil.passedFailedIconPlugin = function () {
         return {
             testRender: function (testElement, test) {
                 appendElement(testElement, 'i', {
-                    className: 'basil-test-icon '
+                    className: 'basil-icon '
                         + (test.hasPassed() ? 'icon-ok' : 'icon-remove')
                 });
             }
@@ -319,15 +373,13 @@
         return {
             pageRender: function (header) {
                 filterForm = appendElement(header, 'form', {
-                    id: 'basil-settings',
-                    className: 'basil-header-section',
+                    className: 'basil-filter basil-header-section',
                     action: location.href
                 });
 
                 appendText(filterForm, 'Filter');
 
                 filterInput = appendElement(filterForm, 'input', {
-                    id: 'basil-filter',
                     type: 'search',
                     name: 'filter',
                     value: filter
@@ -345,7 +397,7 @@
 
             testRender: function (testElement, test) {
                 var filterElement = appendElement(testElement, 'i', {
-                    className: 'basil-test-icon basil-test-button icon-filter'
+                    className: 'basil-icon basil-button icon-filter'
                 });
                 filterElement.addEventListener('click', function () {
                     filterInput.value = test.fullKey();
@@ -391,7 +443,7 @@
                     return;
 
                 var inspectElement = appendElement(testElement, 'i', {
-                    className: 'basil-test-icon basil-test-button icon-signin'
+                    className: 'basil-icon basil-button icon-signin'
                 });
                 inspectElement.addEventListener('click', function () {
                     debugger;
@@ -408,7 +460,7 @@
                     return;
 
                 var codeIcon = appendElement(testElement, 'i', {
-                    className: 'basil-test-icon basil-test-button icon-code'
+                    className: 'basil-icon basil-button icon-code'
                 });
 
                 var code = appendElement(testElement, 'code', {
@@ -432,9 +484,7 @@
 
         return {
             pageRender: function (header, results) {
-                var label = appendElement(header, 'label', {
-                    className: 'basil-header-section'
-                });
+                var label = appendElement(header, 'label', { className: 'basil-hide-passed basil-header-section' });
 
                 var checkbox = appendElement(label, 'input', {
                     type: 'checkbox',
@@ -466,10 +516,22 @@
     };
 
     function appendElement(el, tagName, properties) {
-        var newElement = el.appendChild(document.createElement(tagName));
-        Object.keys(properties).forEach(function (key) {
-            newElement[key] = properties[key];
-        });
+        return el.appendChild(createElement(tagName, properties));
+    }
+
+    function prependElement(el, tagName, properties) {
+        if (!el.childNodes.length)
+            return appendElement(el, tagName, properties);
+
+        return el.insertBefore(createElement(tagName, properties), el.childNodes[0]);
+    }
+
+    function createElement(tagName, properties) {
+        var newElement = document.createElement(tagName);
+        if (properties)
+            Object.keys(properties).forEach(function (key) {
+                newElement[key] = properties[key];
+            });
         return newElement;
     }
 
@@ -495,14 +557,14 @@ basil.registerPlugin(
     Basil.bigTitlePlugin(location),
     Basil.favIconPlugin(),
     Basil.displayTestCountPlugin(basil),
-    Basil.expandCollapsePlugin(localStorage),
     Basil.passedFailedIconPlugin(),
     Basil.testNamePlugin(),
     Basil.errorTextPlugin(),
     Basil.filterPlugin(basil, location),
     Basil.inspectPlugin(),
     Basil.viewCodePlugin(),
-    Basil.hidePassedPlugin(localStorage)
+    Basil.hidePassedPlugin(localStorage),
+    Basil.expandCollapsePlugin(localStorage)
 );
 
 test = describe = when = then = it = basil.test;

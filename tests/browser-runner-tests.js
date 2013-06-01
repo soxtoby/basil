@@ -213,53 +213,208 @@ describe("Browser Runner", function () {
     });
 
     describe("Expand/collapse plugin", function () {
-        var sut = Basil.expandCollapsePlugin();
-        var test = new Basil.Test('foo');
+        var localStorage = {};
+        var sut = Basil.expandCollapsePlugin(localStorage);
 
-        when("test has no children", function () {
-            when("test rendered", function () {
-                sut.testRender(this.dom, test);
+        describe("page rendering", function () {
+            var header = document.createElement('div');
+            var results = document.createElement('div');
 
-                then("expand collapse icon added to test element", function () {
-                    expect(this.dom.children.length).to.equal(1);
+            when("tests expanded by default", function () {
+                localStorage.collapseAllTests = 'false';
+
+                when("page rendered", function () {
+                    sut.pageRender(header, results);
+
+                    var container = header.children[0];
+
+                    then("expand/collapse all container added to header", function () {
+                        expect(container.className).to.contain('basil-expand-collapse-all');
+                    });
+
+                    var expandAll = container.children[0];
+                    var collapseAll = container.children[1];
+
+                    then("expand all label added to header", function () {
+                        expect(expandAll).to.be.an.instanceOf(HTMLLabelElement);
+                        expect(expandAll.innerText).to.equal('Expand all');
+                    });
+
+                    then("collapse all label added to header", function () {
+                        expect(collapseAll).to.be.an.instanceOf(HTMLLabelElement);
+                        expect(collapseAll.innerText).to.equal('Collapse all');
+                    });
+
+                    then("results marked as expanded by default", function () {
+                        expect(results.className).to.contain('is-expanded-by-default')
+                    });
+                });
+            });
+
+            when("tests collapsed by default", function () {
+                localStorage.collapseAllTests = 'true';
+
+                when("page rendered", function () {
+                    sut.pageRender(header, results);
+
+                    then("results marked as collapsed by default", function () {
+                        expect(results.className).to.contain('is-collapsed-by-default');
+                    });
                 });
             });
         });
 
-        when("test has children", function () {
-            test.child('foo');
+        describe("test rendering", function () {
+            var test = new Basil.Test('foo');
 
-            when("test rendered", function () {
-                sut.testRender(this.dom, test);
-                var icon = this.dom.children[0];
+            when("test has no children", function () {
+                when("test rendered", function () {
+                    sut.testRender(this.dom, test);
 
-                then("test is expanded", function () {
-                    expect(this.dom.className).to.not.contain('is-collapsed');
-                    expect(icon.className).to.contain('icon-caret-down');
-                    expect(icon.className).to.not.contain('icon-caret-right');
-                });
-
-                when("icon clicked", function () {
-                    icon.dispatchEvent(new MouseEvent('click'));
-
-                    then("test is collapsed", function () {
-                        expect(this.dom.className).to.contain('is-collapsed');
-                        expect(icon.className).to.not.contain('icon-caret-down');
-                        expect(icon.className).to.contain('icon-caret-right');
+                    then("expand collapse icon added to test element", function () {
+                        expect(this.dom.children.length).to.equal(1);
                     });
+                });
+            });
 
-                    when("icon clicked again", function () {
-                        icon.dispatchEvent(new MouseEvent('click'));
+            when("test has children", function () {
+                test.child('foo');
+
+                when("tests expanded by default", function () {
+                    localStorage.collapseAllTests = 'false';
+
+                    when("test rendered", function () {
+                        sut.testRender(this.dom, test);
+                        var icon = this.dom.children[0];
 
                         then("test is expanded", function () {
                             expect(this.dom.className).to.not.contain('is-collapsed');
-                            expect(icon.className).to.contain('icon-caret-down');
-                            expect(icon.className).to.not.contain('icon-caret-right');
+                            isDownCaret(icon);
+                        });
+
+                        when("icon clicked", function () {
+                            click(icon);
+
+                            then("test is collapsed", function () {
+                                expect(this.dom.className).to.contain('is-collapsed');
+                                isRightCaret(icon);
+                            });
+
+                            when("icon clicked again", function () {
+                                click(icon);
+
+                                then("test is expanded", function () {
+                                    expect(this.dom.className).to.not.contain('is-collapsed');
+                                    isDownCaret(icon);
+                                });
+                            });
+                        });
+                    });
+                });
+
+                when("tests collapsed by default", function () {
+                    localStorage.collapseAllTests = 'true';
+
+                    when("test rendered", function () {
+                        sut.testRender(this.dom, test);
+                        var icon = this.dom.children[0];
+
+                        then("test is collapsed", function () {
+                            expect(this.dom.className).to.not.contain('is-expanded');
+                            isRightCaret(icon);
+                        });
+
+                        when("icon clicked", function () {
+                            click(icon);
+
+                            then("test is expanded", function () {
+                                expect(this.dom.className).to.contain('is-expanded');
+                                isDownCaret(icon);
+                            });
+
+                            when("icon clicked again", function () {
+                                click(icon);
+
+                                then("test is collapsed", function () {
+                                    expect(this.dom.className).to.not.contain('is-expanded');
+                                    isRightCaret(icon);
+                                });
+                            });
                         });
                     });
                 });
             });
         });
+
+        describe("expand/collapse all", function () {
+            var header = document.createElement('div');
+            var results = document.createElement('div');
+            var testElement = results.appendChild(document.createElement('div'));
+            testElement.className = 'basil-test';
+            var test = new Basil.Test('foo');
+            test.child('bar');
+
+            when("expanded by default", function () {
+                localStorage.collapseAllTests = 'false';
+
+                sut.pageRender(header, results);
+                var expandAll = header.children[0].children[0];
+                var collapseAll = header.children[0].children[1];
+                sut.testRender(testElement, test);
+                var testIcon = testElement.children[0];
+
+                when("test expanded", function () {
+                    when("collapse all clicked", function () {
+                        click(collapseAll);
+
+                        then("localStorage updated", function () {
+                            expect(localStorage.collapseAllTests).to.equal('true');
+                        });
+
+                        then("results marked as collapsed by default", function () {
+                            expect(results.className).to.contain('is-collapsed-by-default');
+                            expect(results.className).to.not.contain('is-expanded-by-default');
+                        });
+
+                        then("test is collapsed", function () {
+                            expect(testElement.className).to.not.contain('is-expanded');
+                            isRightCaret(testIcon);
+                        });
+                    });
+                });
+
+                when("test collapsed", function () {
+                    click(testIcon);
+
+                    when("expand all clicked", function () {
+                        click(expandAll);
+
+                        then("localStorage updated", function () {
+                            expect(localStorage.collapseAllTests).to.equal('false');
+                        });
+
+                        then("results marked as expanded by default", function () {
+                            expect(results.className).to.contain('is-expanded-by-default');
+                        });
+
+                        then("test is expanded", function () {
+                            expect(testElement.className).to.not.contain('is-collapsed');
+                            isDownCaret(testIcon);
+                        });
+                    });
+                });
+            });
+        });
+
+        function isDownCaret(icon) {
+            expect(icon.className).to.contain('icon-caret-down');
+            expect(icon.className).to.not.contain('icon-caret-right');
+        }
+
+        function isRightCaret(icon) {
+            expect(icon.className).to.not.contain('icon-caret-down');
+            expect(icon.className).to.contain('icon-caret-right');
+        }
     });
 
     describe("Passed/failed icon plugin", function () {
@@ -397,7 +552,7 @@ describe("Browser Runner", function () {
                 });
 
                 when("icon is clicked", function () {
-                    icon.dispatchEvent(new MouseEvent('click'));
+                    click(icon);
 
                     then("filter search box is populated with test key", function () {
                         expect(filterInput.value).to.equal(test.fullKey());
@@ -497,7 +652,7 @@ describe("Browser Runner", function () {
                 });
 
                 when("icon is clicked", function () {
-                    icon.dispatchEvent(new MouseEvent('click'));
+                    click(icon);
 
                     then("test is inspected", function () {
                         expect(test.inspect).to.have.been.called;
@@ -553,14 +708,14 @@ describe("Browser Runner", function () {
                 });
 
                 when("view code icon is clicked", function () {
-                    icon.dispatchEvent(new MouseEvent('click'));
+                    click(icon);
 
                     then("code element is marked as visible", function () {
                         expect(code.className).to.contain('is-basil-code-visible');
                     });
 
                     when("view code icon is clicked again", function () {
-                        icon.dispatchEvent(new MouseEvent('click'));
+                        click(icon);
 
                         then("code element is no longer marked as visible", function () {
                             expect(code.className).to.not.contain('is-basil-code-visible');
@@ -679,4 +834,8 @@ describe("Browser Runner", function () {
             });
         });
     });
+
+    function click(el) {
+        el.dispatchEvent(new MouseEvent('click'));
+    }
 });
