@@ -835,6 +835,157 @@ describe("Browser Runner", function () {
         });
     });
 
+    describe("Notifications plugin", function () {
+        when("notifications not available", function () {
+            var sut = Basil.notificationPlugin(browserRunner);
+
+            when("page rendered", function () {
+                sut.pageRender(this.dom);
+
+                then("nothing added to header", function () {
+                    expect(this.dom.children.length).to.equal(0);
+                });
+            });
+        });
+
+        when("notifications are available", function () {
+            var PERMISSION_ALLOWED = 0,
+                PERMISSION_NOT_ALLOWED = 1;
+            var notifications = {
+                checkPermission: sinon.stub(),
+                requestPermission: sinon.stub(),
+                createNotification: sinon.stub().returns({
+                    show: sinon.spy(),
+                    cancel: sinon.spy()
+                })
+            };
+            document.title = 'foo';
+            var sut = Basil.notificationPlugin(browserRunner, notifications);
+
+            when("notifications are not allowed", function () {
+                notifications.checkPermission.returns(PERMISSION_NOT_ALLOWED);
+
+                when("page rendered", function () {
+                    sut.pageRender(this.dom);
+
+                    var notificationsLabel = this.dom.children[0];
+
+                    then("notifications label added to header", function () {
+                        expect(notificationsLabel.textContent).to.equal('Enable notifications');
+                    });
+
+                    when("notifications label clicked", function () {
+                        click(notificationsLabel);
+
+                        then("notification permission is requested", function () {
+                            expect(notifications.requestPermission).to.have.been.called;
+                        });
+                    });
+                });
+            });
+
+            when("notifications are allowed", function () {
+                notifications.checkPermission.returns(PERMISSION_ALLOWED);
+
+                when("page rendered", function () {
+                    sut.pageRender(this.dom);
+
+                    then("nothing added to header", function () {
+                        expect(this.dom.children.length).to.equal(0);
+                    });
+                });
+
+                when("no failed tests", function () {
+                    browserRunner.testCounts = { passed: 1, failed: 0, total: 1 };
+
+                    when("tests are complete", function () {
+                        sut.onComplete();
+
+                        then("notification is created", function () {
+                            expect(notifications.createNotification).to.have.been.called;
+                        });
+
+                        var createNotification = notifications.createNotification.lastCall;
+                        var createNotificationArgs = createNotification.args;
+                        var notification = createNotification.returnValue;
+
+                        then("notification has passed icon", function () {
+                            expect(createNotificationArgs[0]).to.equal(sut._passedIcon);
+                        });
+
+                        then("notification title matches document title", function () {
+                            expect(createNotificationArgs[1]).to.equal('foo');
+                        });
+
+                        then("notification text has passing message", function () {
+                            expect(createNotificationArgs[2]).to.equal('All 1 tests passed!');
+                        });
+
+                        then("notification is shown", function () {
+                            expect(notification.show).to.have.been.called;
+                        });
+
+                        when("1 second has elapsed", function () {
+                            this.clock.tick(1000);
+
+                            then("notification is hidden", function () {
+                                expect(notification.cancel).to.have.been.called;
+                            });
+                        });
+
+                        when("window closed", function () {
+                            window.dispatchEvent(new Event('beforeunload'));
+
+                            then("notification is hidden", function () {
+                                expect(notification.cancel).to.have.been.called;
+                            });
+                        });
+                    });
+                });
+
+                when("some failed tests", function () {
+                    browserRunner.testCounts = { passed: 1, failed: 1, total: 2 };
+                    var error = new Error('foo');
+                    var failedTest = new Basil.Test();
+                    failedTest.error = function () { return error; };
+                    browserRunner.tests = function () { return [failedTest]; };
+
+                    when("tests are complete", function () {
+                        sut.onComplete();
+
+                        var createNotification = notifications.createNotification.lastCall;
+                        var createNotificationArgs = createNotification.args;
+                        var notification = createNotification.returnValue;
+
+                        then("notification has failed icon", function () {
+                            expect(createNotificationArgs[0]).to.equal(sut._failedIcon);
+                        });
+
+                        then("notification text has failing message", function () {
+                            expect(createNotificationArgs[2]).to.equal('1 of 2 failed.\n' + error);
+                        });
+
+                        when("1 second has elapsed", function () {
+                            this.clock.tick(1000);
+
+                            then("notification not hidden yet", function () {
+                                expect(notification.cancel).to.not.have.been.called;
+                            });
+                        });
+
+                        when("longer time has elapsed", function () {
+                            this.clock.tick(2000);  // Not going to test specific time calculation
+
+                            then("notification is hidden", function () {
+                                expect(notification.cancel).to.have.been.called;
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+
     function click(el) {
         el.dispatchEvent(new MouseEvent('click'));
     }
